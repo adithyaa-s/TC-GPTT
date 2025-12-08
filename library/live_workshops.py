@@ -37,9 +37,7 @@ class TrainerCentralLiveWorkshops:
         name: str,
         description_html: str,
         start_time_str: str,
-        end_time_str: str,
-        timezone: str,
-        max_attendees: int = 0
+        end_time_str: str
     ) -> dict:
         """
         Create a GLOBAL live workshop.
@@ -71,12 +69,9 @@ class TrainerCentralLiveWorkshops:
                 "name": name,
                 "description": description_html,
                 "deliveryMode": 3,
-                "maxParticipants": max_attendees,
-                "schedule": {
-                    "startTime": start_ms,
-                    "endTime": end_ms,
-                    "timeZone": timezone
-                }
+                "scheduledTime": start_ms,
+                "scheduledEndTime": end_ms,
+                "durationTime": end_ms - start_ms
             }
         }
 

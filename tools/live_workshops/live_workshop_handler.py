@@ -31,7 +31,7 @@ def tc_create_workshop(session_data: dict) -> dict:
     Returns:
         dict: workshop creation response
     """
-    return workshops.create_workshop(session_data)
+    return workshops.create_global_workshop(session_data)
 
 
 @mcp.tool()

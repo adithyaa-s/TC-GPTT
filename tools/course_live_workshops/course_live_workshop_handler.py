@@ -15,9 +15,7 @@ def tc_create_course_live_session(
     name: str,
     description_html: str,
     start_time: str,
-    end_time: str,
-    timezone: str,
-    max_attendees: int = 0
+    end_time: str
 ):
     """
     Create a LIVE WORKSHOP inside a course.
@@ -33,9 +31,7 @@ def tc_create_course_live_session(
         name=name,
         description_html=description_html,
         start_time_str=start_time,
-        end_time_str=end_time,
-        timezone=timezone,
-        max_attendees=max_attendees
+        end_time_str=end_time
     )
 
 @mcp.tool()

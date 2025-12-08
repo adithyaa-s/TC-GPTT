@@ -38,13 +38,11 @@ class TrainerCentralLiveWorkshops:
         name: str,
         description_html: str,
         start_time_str: str,
-        end_time_str: str,
-        timezone: str,
-        max_attendees: int = 0
+        end_time_str: str
     ):
         """
         Create a LIVE WORKSHOP inside a course.
-
+ß
         API:
             POST /api/v4/<orgId>/sessions.json
 
@@ -60,8 +58,6 @@ class TrainerCentralLiveWorkshops:
             description_html (str)
             start_time_str (str): "DD-MM-YYYY HH:MMAM/PM"
             end_time_str   (str): "DD-MM-YYYY HH:MMAM/PM"
-            timezone (str): Example: "Asia/Kolkata"
-            max_attendees (int)
 
         Returns:
             dict: API response containing the newly created workshop.
@@ -83,12 +79,9 @@ class TrainerCentralLiveWorkshops:
                 "description": description_html,
                 "courseId": course_id,
                 "deliveryMode": 3,                
-                "maxParticipants": max_attendees,
-                "schedule": {
-                    "startTime": start_ms,
-                    "endTime": end_ms,
-                    "timeZone": timezone
-                }
+                "scheduledTime": self.date_converter.convert_date_to_time(start_time_str),
+                "scheduledEndTime": self.date_converter.convert_date_to_time(end_time_str),
+                "durationTime": end_ms - start_ms,
             }
         }
 
