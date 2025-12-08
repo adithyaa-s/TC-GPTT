@@ -82,7 +82,7 @@ class TrainerCentralLiveWorkshops:
                 "name": name,
                 "description": description_html,
                 "courseId": course_id,
-                "deliveryMode": 6,                
+                "deliveryMode": 3,                
                 "maxParticipants": max_attendees,
                 "schedule": {
                     "startTime": start_ms,

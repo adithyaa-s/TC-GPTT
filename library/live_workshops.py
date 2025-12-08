@@ -47,7 +47,7 @@ class TrainerCentralLiveWorkshops:
         API:
             POST /api/v4/<orgId>/sessions.json
 
-        deliveryMode = 6  → live workshop (global)
+        deliveryMode = 3  → live workshop 
 
         Args (LLM REQUIRED FORMAT):
             start_time_str: "DD-MM-YYYY HH:MMAM/PM"
@@ -70,7 +70,7 @@ class TrainerCentralLiveWorkshops:
             "session": {
                 "name": name,
                 "description": description_html,
-                "deliveryMode": 6,
+                "deliveryMode": 3,
                 "maxParticipants": max_attendees,
                 "schedule": {
                     "startTime": start_ms,
