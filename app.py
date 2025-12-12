@@ -47,7 +47,7 @@ from fastapi import FastAPI
 app = FastAPI(title="TrainerCentral MCP Server")
 
 # Configuration
-DOMAIN = os.getenv("DOMAIN", "https://tc-tgpt-auth.onrender.com")
+DOMAIN = os.getenv("DOMAIN", "https://tc-cgpt.onrender.com")
 AUTH_SERVER = "https://accounts.zoho.in"
 
 # Add CORS
