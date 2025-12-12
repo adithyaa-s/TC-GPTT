@@ -79,8 +79,8 @@ class TrainerCentralLiveWorkshops:
                 "description": description_html,
                 "courseId": course_id,
                 "deliveryMode": 3,                
-                "scheduledTime": self.date_converter.convert_date_to_time(start_time_str),
-                "scheduledEndTime": self.date_converter.convert_date_to_time(end_time_str),
+                "scheduledTime": start_ms,
+                "scheduledEndTime": end_ms,
                 "durationTime": end_ms - start_ms,
             }
         }

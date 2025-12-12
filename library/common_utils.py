@@ -2,7 +2,6 @@
 
 import os
 import requests
-from .oauth import ZohoOAuth
 from datetime import datetime
 
 class TrainerCentralCommon:
@@ -11,12 +10,10 @@ class TrainerCentralCommon:
     Provides base URL, OAuth token, and generic delete functionality.
     """
     def __init__(self):
-        self.ORG_ID = os.getenv("ORG_ID")
         self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4/{self.ORG_ID}"
-        self.oauth = ZohoOAuth()
+        self.base_url = f"{self.DOMAIN}/api/v4"
 
-    def delete_resource(self, resource: str, resource_id: str) -> dict:
+    def delete_resource(self, resource: str, resource_id: str, orgId: str, access_token: str) -> dict:
         """
         Delete a generic resource.
 
@@ -27,9 +24,9 @@ class TrainerCentralCommon:
         Returns:
             dict: API response JSON.
         """
-        request_url = f"{self.base_url}/{resource}/{resource_id}.json"
+        request_url = f"{self.base_url}/{orgId}/{resource}/{resource_id}.json"
         headers = {
-            "Authorization": f"Bearer {self.oauth.get_access_token()}"
+            "Authorization": f"Bearer {access_token}"
         }
         response = requests.delete(request_url, headers=headers)
         return response.json()

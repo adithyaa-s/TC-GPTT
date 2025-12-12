@@ -4,7 +4,7 @@ TrainerCentral Course Management API Wrapper.
 
 import os
 import requests
-from .oauth import ZohoOAuth
+# from .oauth import ZohoOAuth
 
 
 class TrainerCentralCourses:
@@ -13,12 +13,12 @@ class TrainerCentralCourses:
     """
 
     def __init__(self):
-        self.ORG_ID = os.getenv("ORG_ID")
+        # self.ORG_ID = os.getenv("ORG_ID")
         self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4/{self.ORG_ID}"
-        self.oauth = ZohoOAuth()
+        self.base_url = f"{self.DOMAIN}/api/v4"
+        # self.oauth = ZohoOAuth()
 
-    def post_course(self, course_data: dict):
+    def post_course(self, course_data: dict, orgId: str, access_token: str):
         """
         Create a new course in TrainerCentral.
 
@@ -43,16 +43,16 @@ class TrainerCentralCourses:
         Returns:
             dict: API response containing created course, ticket, category mapping, etc.
         """
-        request_url = f"{self.base_url}/courses.json"
+        request_url = f"{self.base_url}/{orgId}/courses.json"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth.get_access_token()}"
+            "Authorization": f"Bearer {access_token}"
         }
         data = {"course": course_data}
 
         return requests.post(request_url, json=data, headers=headers).json()
 
-    def get_course(self, course_id: str):
+    def get_course(self, course_id: str, orgId: str, access_token: str):
         """
         Fetch the details of a single course.
 
@@ -68,12 +68,12 @@ class TrainerCentralCourses:
                 - description  
                 - links to sessions, tickets, etc.
         """
-        request_url = f"{self.base_url}/courses/{course_id}.json"
-        headers = {"Authorization": f"Bearer {self.oauth.get_access_token()}"}
+        request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
+        headers = {"Authorization": f"Bearer {access_token}"}
 
         return requests.get(request_url, headers=headers).json()
 
-    def list_courses(self):
+    def list_courses(self, orgId: str, access_token: str):
         """
         List all courses (or paginated subset) from TrainerCentral.
 
@@ -90,12 +90,12 @@ class TrainerCentralCourses:
             - "courseCategories": mapping data  
             - "meta": includes totalCourseCount
         """
-        request_url = f"{self.base_url}/courses.json"
-        headers = {"Authorization": f"Bearer {self.oauth.get_access_token()}"}
+        request_url = f"{self.base_url}/{orgId}/courses.json"
+        headers = {"Authorization": f"Bearer {access_token}"}
 
         return requests.get(request_url, headers=headers).json()
 
-    def update_course(self, course_id: str, updates: dict):
+    def update_course(self, course_id: str, updates: dict, orgId: str, access_token: str):
         """
         Edit/update an existing TrainerCentral course.
 
@@ -120,16 +120,16 @@ class TrainerCentralCourses:
         Returns:
             dict: Response containing the updated course object.
         """
-        request_url = f"{self.base_url}/courses/{course_id}.json"
+        request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth.get_access_token()}"
+            "Authorization": f"Bearer {access_token}"
         }
         data = {"course": updates}
 
         return requests.put(request_url, json=data, headers=headers).json()
 
-    def delete_course(self, course_id: str):
+    def delete_course(self, course_id: str, orgId: str, access_token: str):
         """
         Permanently delete a TrainerCentral course.
 
@@ -141,7 +141,7 @@ class TrainerCentralCourses:
         Returns:
             dict: Response JSON from the delete call.
         """
-        request_url = f"{self.base_url}/courses/{course_id}.json"
-        headers = {"Authorization": f"Bearer {self.oauth.get_access_token()}"}
+        request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
+        headers = {"Authorization": f"Bearer {access_token}"}
 
         return requests.delete(request_url, headers=headers).json()

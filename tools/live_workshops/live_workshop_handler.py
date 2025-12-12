@@ -5,7 +5,7 @@ workshops = TrainerCentralLiveWorkshops()
 
 
 @mcp.tool()
-def tc_create_workshop(session_data: dict) -> dict:
+def tc_create_workshop(session_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a GLOBAL Live Workshop (deliveryMode = 3).
 
@@ -28,14 +28,16 @@ def tc_create_workshop(session_data: dict) -> dict:
         }
       }
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Returns:
         dict: workshop creation response
     """
-    return workshops.create_global_workshop(session_data)
+    return workshops.create_global_workshop(session_data, orgId, access_token)
 
 
 @mcp.tool()
-def tc_update_workshop(session_id: str, updates: dict) -> dict:
+def tc_update_workshop(session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing global workshop.
 
@@ -50,14 +52,16 @@ def tc_update_workshop(session_id: str, updates: dict) -> dict:
     To cancel:
       { "isCancelled": true }
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Returns:
         dict
     """
-    return workshops.update_workshop(session_id, updates)
+    return workshops.update_workshop(session_id, updates, orgId, access_token)
 
 
 @mcp.tool()
-def tc_create_workshop_occurrence(talk_data: dict) -> dict:
+def tc_create_workshop_occurrence(talk_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a new occurrence (talk) for a workshop.
 
@@ -69,14 +73,16 @@ def tc_create_workshop_occurrence(talk_data: dict) -> dict:
         "durationTime": 3600000
       }
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.    
+    
     Returns:
         dict
     """
-    return workshops.create_occurrence(talk_data)
+    return workshops.create_occurrence(talk_data, orgId, access_token)
 
 
 @mcp.tool()
-def tc_update_workshop_occurrence(talk_id: str, updates: dict) -> dict:
+def tc_update_workshop_occurrence(talk_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update a workshop occurrence.
 
@@ -90,13 +96,15 @@ def tc_update_workshop_occurrence(talk_id: str, updates: dict) -> dict:
     To cancel occurrence:
       { "isCancelled": true }
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Returns:
         dict
     """
-    return workshops.update_occurrence(talk_id, updates)
+    return workshops.update_occurrence(talk_id, updates, orgId, access_token)
 
 @mcp.tool()
-def tc_list_all_global_workshops(filter_type: int = 5, limit: int = 50, si: int = 0) -> dict:
+def tc_list_all_global_workshops(org_id: str, access_token: str, filter_type: int = 5, limit: int = 50, si: int = 0) -> dict:
     """
     List upcoming global live workshops (not tied to any course).
 
@@ -105,14 +113,16 @@ def tc_list_all_global_workshops(filter_type: int = 5, limit: int = 50, si: int 
         limit (int): Max number of workshops.
         si (int): Start index for pagination.
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Returns:
         dict: API response with workshop list.
     """
-    return workshops.list_all_upcoming_workshops(filter_type, limit, si)
+    return workshops.list_all_upcoming_workshops(org_id, access_token, filter_type, limit, si)
 
 
 @mcp.tool()
-def tc_invite_user_to_session(session_id: str, email: str, role: int = 3, source: int = 1) -> dict:
+def tc_invite_user_to_session(session_id: str, email: str, orgId: str, access_token: str, role: int = 3, source: int = 1) -> dict:
     """
     Invite an existing user (by email) to a course-linked live workshop session.
 
@@ -122,7 +132,9 @@ def tc_invite_user_to_session(session_id: str, email: str, role: int = 3, source
       role (int, optional): Session role for the user (default = 3 → attendee).
       source (int, optional): Source code as per API spec (default = 1).
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Returns:
       dict: JSON response from TrainerCentral API.
     """
-    return workshops.invite_user_to_workshop(session_id, email, role, source)
+    return workshops.invite_user_to_workshop(session_id, email, orgId, access_token, role, source)

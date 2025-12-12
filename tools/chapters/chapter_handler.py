@@ -9,7 +9,7 @@ tc = TrainerCentralChapters()
 
 
 @mcp.tool()
-def tc_create_chapter(section_data: dict) -> dict:
+def tc_create_chapter(section_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a new chapter (section) under a course in TrainerCentral.
 
@@ -26,6 +26,8 @@ def tc_create_chapter(section_data: dict) -> dict:
                 "name": "Introduction"
             }
         }
+
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
 
     Required OAuth scope:
         TrainerCentral.sectionapi.CREATE
@@ -44,11 +46,11 @@ def tc_create_chapter(section_data: dict) -> dict:
             - lastUpdatedTime
             - status
     """
-    return tc.create_chapter(section_data)
+    return tc.create_chapter(section_data, orgId, access_token)
 
 
 @mcp.tool()
-def tc_update_chapter(course_id: str, section_id: str, updates: dict) -> dict:
+def tc_update_chapter(course_id: str, section_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing chapter's name and/or position in a course.
 
@@ -70,6 +72,8 @@ def tc_update_chapter(course_id: str, section_id: str, updates: dict) -> dict:
             }
         }
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Required OAuth scope:
         TrainerCentral.sectionapi.UPDATE
 
@@ -86,11 +90,11 @@ def tc_update_chapter(course_id: str, section_id: str, updates: dict) -> dict:
     Returns:
         dict: API response containing the updated chapter (section) object.
     """
-    return tc.update_chapter(course_id, section_id, updates)
+    return tc.update_chapter(course_id, section_id, updates, orgId, access_token)
 
 
 @mcp.tool()
-def tc_delete_chapter(course_id: str, section_id: str) -> dict:
+def tc_delete_chapter(course_id: str, section_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a chapter from a course in TrainerCentral.
 
@@ -99,6 +103,8 @@ def tc_delete_chapter(course_id: str, section_id: str) -> dict:
             "3000094000002000004",  # courseId
             "3200000000002000012"   # sectionId
         )
+
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
 
     This will call the TrainerCentral Delete Chapter API:
         DELETE /api/v4/{orgId}/course/{courseId}/sections/{sectionId}.json
@@ -116,4 +122,4 @@ def tc_delete_chapter(course_id: str, section_id: str) -> dict:
         dict: API delete response (may be an empty object or status details,
               depending on TrainerCentral's response format).
     """
-    return tc.delete_chapter(course_id, section_id)
+    return tc.delete_chapter(course_id, section_id, orgId, access_token)

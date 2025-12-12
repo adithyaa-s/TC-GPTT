@@ -4,7 +4,7 @@ TrainerCentral Chapters (Sections) API Wrapper.
 
 import os
 import requests
-from .oauth import ZohoOAuth
+# from .oauth import ZohoOAuth
 
 
 class TrainerCentralChapters:
@@ -14,12 +14,12 @@ class TrainerCentralChapters:
     """
 
     def __init__(self):
-        self.ORG_ID = os.getenv("ORG_ID")
+        # self.ORG_ID = os.getenv("ORG_ID")
         self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4/{self.ORG_ID}"
-        self.oauth = ZohoOAuth()
+        self.base_url = f"{self.DOMAIN}/api/v4"
+        # self.oauth = ZohoOAuth()
 
-    def create_chapter(self, section_data: dict):
+    def create_chapter(self, section_data: dict, orgId: str, access_token: str):
         """
         Create a chapter under a course.
 
@@ -46,16 +46,16 @@ class TrainerCentralChapters:
         Returns:
             dict: API response containing the created section.
         """
-        request_url = f"{self.base_url}/sections.json"
+        request_url = f"{self.base_url}/{orgId}/sections.json"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth.get_access_token()}",
+            "Authorization": f"Bearer {access_token}"
         }
         data = {"section": section_data}
 
         return requests.post(request_url, json=data, headers=headers).json()
 
-    def update_chapter(self, course_id: str, section_id: str, updates: dict):
+    def update_chapter(self, course_id: str, section_id: str, updates: dict, orgId: str, access_token: str):
         """
         Edit a chapter name or reorder a chapter inside a course.
 
@@ -82,17 +82,17 @@ class TrainerCentralChapters:
             dict: API response containing the updated section.
         """
         request_url = (
-            f"{self.base_url}/course/{course_id}/sections/{section_id}.json"
+            f"{self.base_url}/{orgId}/course/{course_id}/sections/{section_id}.json"
         )
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth.get_access_token()}",
+            "Authorization": f"Bearer {access_token}"
         }
         data = {"section": updates}
 
         return requests.put(request_url, json=data, headers=headers).json()
 
-    def delete_chapter(self, course_id: str, section_id: str):
+    def delete_chapter(self, course_id: str, section_id: str, orgId: str, access_token: str):
         """
         Delete a chapter from a course.
 
@@ -110,10 +110,10 @@ class TrainerCentralChapters:
             dict: Response JSON from the delete call.
         """
         request_url = (
-            f"{self.base_url}/course/{course_id}/sections/{section_id}.json"
+            f"{self.base_url}/{orgId}/course/{course_id}/sections/{section_id}.json"
         )
         headers = {
-            "Authorization": f"Bearer {self.oauth.get_access_token()}",
+            "Authorization": f"Bearer {access_token}"
         }
 
         return requests.delete(request_url, headers=headers).json()

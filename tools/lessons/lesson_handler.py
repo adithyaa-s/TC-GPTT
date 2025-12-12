@@ -36,6 +36,8 @@ tc_lessons = TrainerCentralLessons()
 def tc_create_lesson(
     session_data: dict,
     content_html: str,
+    orgId: str,
+    access_token: str,
     content_filename: str = "Content"
 ) -> dict:
     """
@@ -46,13 +48,15 @@ def tc_create_lesson(
         content_html (str): full HTML/text body of lesson
         content_filename (str, optional): title/filename for upload (default: "Content")
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Returns:
         dict: { "lesson": ..., "content": ... }
     """
-    return tc_lessons.create_lesson_with_content(session_data, content_html, content_filename)
+    return tc_lessons.create_lesson_with_content(session_data, content_html, orgId, access_token, content_filename)
 
 @mcp.tool()
-def tc_update_lesson(session_id: str, updates: dict) -> dict:
+def tc_update_lesson(session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing lesson in TrainerCentral.
 
@@ -70,6 +74,8 @@ def tc_update_lesson(session_id: str, updates: dict) -> dict:
     Required OAuth scope:
         TrainerCentral.sessionapi.UPDATE
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Args:
         session_id (str): ID of the session (lesson) to update.
         updates (dict): Fields to update.
@@ -77,11 +83,11 @@ def tc_update_lesson(session_id: str, updates: dict) -> dict:
     Returns:
         dict: API response containing the updated session.
     """
-    return tc_lessons.update_lesson(session_id, updates)
+    return tc_lessons.update_lesson(session_id, updates, orgId, access_token)
 
 
 @mcp.tool()
-def tc_delete_lesson(session_id: str) -> dict:
+def tc_delete_lesson(session_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a lesson (or live session) by session ID.
 
@@ -91,10 +97,12 @@ def tc_delete_lesson(session_id: str) -> dict:
     Required OAuth scope:
         TrainerCentral.sessionapi.DELETE
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Args:
         session_id (str): ID of the session to delete.
 
     Returns:
         dict: API response for the delete operation.
     """
-    return tc_lessons.delete_lesson(session_id)
+    return tc_lessons.delete_lesson(session_id, orgId, access_token)

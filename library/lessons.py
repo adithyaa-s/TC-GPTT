@@ -1,21 +1,20 @@
 import os
 import requests
-from .oauth import ZohoOAuth
 from .common_utils import TrainerCentralCommon
 
 class TrainerCentralLessons:
     def __init__(self):
-        self.ORG_ID = os.getenv("ORG_ID")
         self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4/{self.ORG_ID}"
-        self.oauth = ZohoOAuth()
+        self.base_url = f"{self.DOMAIN}/api/v4"
         self.common = TrainerCentralCommon()
 
     def create_lesson_with_content(
         self,
         lesson_data: dict,
         content_html: str,
-        content_filename: str = "Content"
+        orgId: str, 
+        access_token: str,
+        content_filename: str = "Content",
     ) -> dict:
         """
         Create a lesson (session) with full rich-text content.
@@ -39,10 +38,10 @@ class TrainerCentralLessons:
             }
         """
         # Step 1: create session
-        url = f"{self.base_url}/sessions.json"
+        url = f"{self.base_url}/{orgId}/sessions.json"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth.get_access_token()}"
+            "Authorization": f"Bearer {access_token}"
         }
         payload = {"session": lesson_data}
         create_resp = requests.post(url, json=payload, headers=headers).json()
@@ -55,10 +54,10 @@ class TrainerCentralLessons:
         if not session_id:
             raise RuntimeError(f"Failed to find sessionId in response: {create_resp}")
 
-        content_url = f"{self.base_url}/session/{session_id}/createTextFile.json"
+        content_url = f"{self.base_url}/{orgId}/session/{session_id}/createTextFile.json"
         content_headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.oauth.get_access_token()}"
+            "Authorization": f"Bearer {access_token}"
         }
         content_body = {
             "richTextContent": content_html,
@@ -71,14 +70,14 @@ class TrainerCentralLessons:
             "content": content_resp
         }
 
-    def update_lesson(self, session_id: str, updates: dict) -> dict:
-        url = f"{self.base_url}/sessions/{session_id}.json"
+    def update_lesson(self, session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
+        url = f"{self.base_url}/{orgId}/sessions/{session_id}.json"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer self.oauth.get_access_token()"
+            "Authorization": f"Bearer {access_token}"
         }
         payload = {"session": updates}
         return requests.put(url, json=payload, headers=headers).json()
 
-    def delete_lesson(self, session_id: str) -> dict:
-        return self.common.delete_resource("sessions", session_id)
+    def delete_lesson(self, session_id: str, orgId: str, access_token: str) -> dict:
+        return self.common.delete_resource("sessions", session_id, orgId, access_token)

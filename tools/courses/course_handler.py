@@ -9,7 +9,7 @@ tc = TrainerCentralCourses()
 
 
 @mcp.tool()
-def tc_create_course(course_data: dict) -> dict:
+def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a new course in TrainerCentral.
 
@@ -37,6 +37,8 @@ def tc_create_course(course_data: dict) -> dict:
             }
         }
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
     Required OAuth scope:
         TrainerCentral.courseapi.CREATE
 
@@ -46,16 +48,18 @@ def tc_create_course(course_data: dict) -> dict:
             - course
             - courseCategories
     """
-    return tc.post_course(course_data)
+    return tc.post_course(course_data, orgId, access_token)
 
 
 @mcp.tool()
-def tc_get_course(course_id: str) -> dict:
+def tc_get_course(course_id: str, orgId: str, access_token: str) -> dict:
     """
     Retrieve a course by its ID.
 
     Syntax:
         tc_get_course("3000094000002000004")
+
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
 
     This will call the TrainerCentral Get Course API:
         GET /api/v4/{orgId}/courses/{courseId}.json
@@ -71,20 +75,22 @@ def tc_get_course(course_id: str) -> dict:
             - subTitle
             - links to sessions, tickets, etc.
     """
-    return tc.get_course(course_id)
+    return tc.get_course(course_id, orgId, access_token)
 
 
 @mcp.tool()
-def tc_list_courses(limit: int = None, si: int = None) -> dict:
+def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = None) -> dict:
     """
     List all courses (or a paginated subset).
 
     Syntax:
-        tc_list_courses()
-        tc_list_courses(limit=30)
-        tc_list_courses(limit=20, si=10)
+        tc_list_courses(orgId, access_token)
+        tc_list_courses(orgId, access_token, limit=30)
+        tc_list_courses(orgId, access_token, limit=20, si=10)
+        
 
     Note:
+        Note: Provide orgId and access token of the user, after OAuth, as parameters.  
         TrainerCentral uses `limit` and `si` as query parameters.
         Current implementation returns all courses — pagination support
         can be added later.
@@ -98,11 +104,11 @@ def tc_list_courses(limit: int = None, si: int = None) -> dict:
             - courseCategories []
             - meta { totalCourseCount }
     """
-    return tc.list_courses()
+    return tc.list_courses(orgId, access_token)
 
 
 @mcp.tool()
-def tc_update_course(course_id: str, updates: dict) -> dict:
+def tc_update_course(course_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing course.
 
@@ -120,6 +126,8 @@ def tc_update_course(course_id: str, updates: dict) -> dict:
             }
         )
 
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+        
     This will call the TrainerCentral Update Course API with:
         {
             "course": {
@@ -136,16 +144,18 @@ def tc_update_course(course_id: str, updates: dict) -> dict:
     Returns:
         dict: Updated course object.
     """
-    return tc.update_course(course_id, updates)
+    return tc.update_course(course_id, updates, orgId, access_token)
 
 
 @mcp.tool()
-def tc_delete_course(course_id: str) -> dict:
+def tc_delete_course(course_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a course permanently.
 
     Syntax:
         tc_delete_course("3000094000002000004")
+
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
 
     This will call the TrainerCentral Delete Course API:
         DELETE /api/v4/{orgId}/courses/{courseId}.json
@@ -156,4 +166,4 @@ def tc_delete_course(course_id: str) -> dict:
     Returns:
         dict: API delete response.
     """
-    return tc.delete_course(course_id)
+    return tc.delete_course(course_id, orgId, access_token)
