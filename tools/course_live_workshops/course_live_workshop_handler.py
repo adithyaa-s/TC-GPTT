@@ -8,14 +8,15 @@ from library.course_live_workshops import TrainerCentralLiveWorkshops
 tc_live = TrainerCentralLiveWorkshops()
 
 
-
 @mcp.tool()
 def tc_create_course_live_session(
     course_id: str,
     name: str,
     description_html: str,
     start_time: str,
-    end_time: str
+    end_time: str,
+    orgId: str,  
+    access_token: str  
 ):
     """
     Create a LIVE WORKSHOP inside a course.
@@ -27,6 +28,8 @@ def tc_create_course_live_session(
     """
 
     return tc_live.create_course_live_workshop(
+        orgId=orgId,  # FIXED: Pass orgId first
+        access_token=access_token,  # FIXED: Pass access_token second
         course_id=course_id,
         name=name,
         description_html=description_html,
@@ -34,8 +37,15 @@ def tc_create_course_live_session(
         end_time_str=end_time
     )
 
+
 @mcp.tool()
-def tc_list_course_live_sessions(filter_type: int = 5, limit: int = 50, si: int = 0) -> dict:
+def tc_list_course_live_sessions(
+    orgId: str,  # FIXED: Added orgId
+    access_token: str,  # FIXED: Added access_token
+    filter_type: int = 5,
+    limit: int = 50,
+    si: int = 0
+) -> dict:
     """
     List upcoming live workshop sessions, inside the course alone.
 
@@ -53,11 +63,15 @@ def tc_list_course_live_sessions(filter_type: int = 5, limit: int = 50, si: int 
     Returns:
         dict: API response with sessions list.
     """
-    return tc_live.list_upcoming_live_sessions(filter_type, limit, si)
+    return tc_live.list_upcoming_live_sessions(orgId, access_token, filter_type, limit, si)
 
 
 @mcp.tool()
-def tc_delete_course_live_session(session_id: str) -> dict:
+def tc_delete_course_live_session(
+    session_id: str,
+    orgId: str,  # FIXED: Added orgId
+    access_token: str  # FIXED: Added access_token
+) -> dict:
     """
     Delete a live workshop session by session ID.
 
@@ -73,7 +87,7 @@ def tc_delete_course_live_session(session_id: str) -> dict:
     Returns:
         dict: API response for the delete operation.
     """
-    return tc_live.delete_live_session(session_id)
+    return tc_live.delete_live_session(session_id, orgId, access_token)
 
 
 @mcp.tool()
@@ -81,6 +95,8 @@ def invite_learner_to_course_or_course_live_session(
     email: str,
     first_name: str,
     last_name: str,
+    orgId: str,  # FIXED: Added orgId
+    access_token: str,  # FIXED: Added access_token
     course_id: str = None,
     session_id: str = None,
     is_access_granted: bool = True,
@@ -103,6 +119,8 @@ def invite_learner_to_course_or_course_live_session(
     """
     return tc_live.invite_learner_to_course_or_course_live_session(
         email=email,
+        orgId=orgId,  # FIXED: Added orgId
+        access_token=access_token,  # FIXED: Added access_token
         first_name=first_name,
         last_name=last_name,
         course_id=course_id,

@@ -1,3 +1,6 @@
-fastmcp
+fastapi
+uvicorn[standard]
+pydantic
 requests
-datetime
+python-dateutil
+fastmcp

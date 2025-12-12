@@ -1,5 +1,6 @@
 import os
 import requests
+from library.common_utils import DateConverter
 
 
 class TrainerCentralLiveWorkshops:
@@ -27,6 +28,7 @@ class TrainerCentralLiveWorkshops:
     def __init__(self):
         self.DOMAIN = os.getenv("DOMAIN")
         self.base_url = f"{self.DOMAIN}/api/v4"
+        self.date_converter = DateConverter()  # FIXED: Added this line
 
 
     def create_global_workshop(
@@ -44,7 +46,7 @@ class TrainerCentralLiveWorkshops:
         API:
             POST /api/v4/<orgId>/sessions.json
 
-        deliveryMode = 3  → live workshop 
+        deliveryMode = 3 → live workshop (global)
 
         Args (LLM REQUIRED FORMAT):
             start_time_str: "DD-MM-YYYY HH:MMAM/PM"
@@ -75,7 +77,6 @@ class TrainerCentralLiveWorkshops:
         }
 
         return requests.post(url, json=body, headers=headers).json()
-
 
 
     def update_workshop(self, session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
@@ -187,7 +188,7 @@ class TrainerCentralLiveWorkshops:
         Args:
             session_id (str): ID of the existing session / live workshop.
             email (str): Email address of the user to invite.
-            role (int): Role code in session (e.g. 3 = attendee — adjust as per your setup).
+            role (int): Role code in session (e.g. 3 = attendee – adjust as per your setup).
             source (int): Source indicator (per TrainerCentral API).
 
         Returns:
@@ -211,5 +212,3 @@ class TrainerCentralLiveWorkshops:
         resp = requests.post(url, json=body, headers=headers)
         resp.raise_for_status()
         return resp.json()
-
-
