@@ -68,20 +68,28 @@ class ZohoOAuth:
             return self.refresh_access_token()
         return self.access_token
 
+
 def get_orgId(access_token: str) -> str:
     """
-    Retrieve the organization ID from "https://myacademy.trainercentral.in/api/v4/org/portals.json".
-    Returns:
-        str: The organization ID.
+    Retrieve the organization ID from TrainerCentral.
     """
-    
     url = "https://myacademy.trainercentral.in/api/v4/org/portals.json"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
-    resp = requests.get(url, headers=headers)
-    data = resp.json()
-    orgId = data.split('"id": "')[1].split('"')[0]
-    return orgId
+    resp = requests.get(url, headers=headers, timeout=10)
+    resp.raise_for_status()
+
+    data = resp.json() 
+
+    portals = data.get("portals")
+    if not portals or not isinstance(portals, list):
+        raise ValueError("Invalid portals response structure")
+
+    org_id = portals[0].get("id")
+    if not org_id:
+        raise ValueError("orgId not found in response")
+
+    return org_id
