@@ -2,7 +2,7 @@
 
 .venv
 
-/pycache/*
+*/__pycache__/*
 
 test.py
 
