@@ -72,29 +72,75 @@ def register_tools():
     Discover and register all @mcp.tool() decorated functions
     """
     # Import all handler modules
-    from tools.courses import course_handler
-    from tools.chapters import chapter_handler
-    from tools.lessons import lesson_handler
-    from tools.live_workshops import live_workshop_handler
-    from tools.course_live_workshops import course_live_workshop_handler
-    
-    # Get all functions from each module
-    modules = [
-        course_handler,
-        chapter_handler,
-        lesson_handler,
-        live_workshop_handler,
-        course_live_workshop_handler
-    ]
-    
-    for module in modules:
-        for name, obj in inspect.getmembers(module):
-            if inspect.isfunction(obj) and name.startswith('tc_') or name.startswith('tc_'):
-                TOOL_REGISTRY[name] = obj
-                logger.info(f"Registered tool: {name}")
+    # Manual tool registry - directly import all tool functions
+from tools.courses.course_handler import (
+    tc_create_course,
+    tc_get_course,
+    tc_list_courses,
+    tc_update_course,
+    tc_delete_course
+)
+from tools.chapters.chapter_handler import (
+    tc_create_chapter,
+    tc_update_chapter,
+    tc_delete_chapter
+)
+from tools.lessons.lesson_handler import (
+    tc_create_lesson,
+    tc_update_lesson,
+    tc_delete_lesson
+)
+from tools.live_workshops.live_workshop_handler import (
+    tc_create_workshop,
+    tc_update_workshop,
+    tc_create_workshop_occurrence,
+    tc_update_workshop_occurrence,
+    tc_list_all_global_workshops,
+    tc_invite_user_to_session
+)
+from tools.course_live_workshops.course_live_workshop_handler import (
+    tc_create_course_live_session,
+    tc_list_course_live_sessions,
+    tc_delete_course_live_session,
+    invite_learner_to_course_or_course_live_session
+)
 
-# Register tools on startup
-register_tools()
+# Build the tool registry with direct references
+TOOL_REGISTRY = {
+    # Courses
+    "tc_create_course": tc_create_course,
+    "tc_get_course": tc_get_course,
+    "tc_list_courses": tc_list_courses,
+    "tc_update_course": tc_update_course,
+    "tc_delete_course": tc_delete_course,
+    
+    # Chapters
+    "tc_create_chapter": tc_create_chapter,
+    "tc_update_chapter": tc_update_chapter,
+    "tc_delete_chapter": tc_delete_chapter,
+    
+    # Lessons
+    "tc_create_lesson": tc_create_lesson,
+    "tc_update_lesson": tc_update_lesson,
+    "tc_delete_lesson": tc_delete_lesson,
+    
+    # Global Workshops
+    "tc_create_workshop": tc_create_workshop,
+    "tc_update_workshop": tc_update_workshop,
+    "tc_create_workshop_occurrence": tc_create_workshop_occurrence,
+    "tc_update_workshop_occurrence": tc_update_workshop_occurrence,
+    "tc_list_all_global_workshops": tc_list_all_global_workshops,
+    "tc_invite_user_to_session": tc_invite_user_to_session,
+    
+    # Course Live Workshops
+    "tc_create_course_live_session": tc_create_course_live_session,
+    "tc_list_course_live_sessions": tc_list_course_live_sessions,
+    "tc_delete_course_live_session": tc_delete_course_live_session,
+    "invite_learner_to_course_or_course_live_session": invite_learner_to_course_or_course_live_session,
+}
+
+logger.info(f"Registered {len(TOOL_REGISTRY)} tools")
+
 
 # OAuth Protected Resource Metadata
 @app.get("/.well-known/oauth-protected-resource")
