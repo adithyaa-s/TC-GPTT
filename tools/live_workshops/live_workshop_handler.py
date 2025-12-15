@@ -4,7 +4,7 @@ from library.live_workshops import TrainerCentralLiveWorkshops
 workshops = TrainerCentralLiveWorkshops()
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_workshop(session_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a GLOBAL Live Workshop (deliveryMode = 3).
@@ -36,7 +36,7 @@ def tc_create_workshop(session_data: dict, orgId: str, access_token: str) -> dic
     return workshops.create_global_workshop(session_data, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_update_workshop(session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing global workshop.
@@ -60,7 +60,7 @@ def tc_update_workshop(session_id: str, updates: dict, orgId: str, access_token:
     return workshops.update_workshop(session_id, updates, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_workshop_occurrence(talk_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a new occurrence (talk) for a workshop.
@@ -81,7 +81,7 @@ def tc_create_workshop_occurrence(talk_data: dict, orgId: str, access_token: str
     return workshops.create_occurrence(talk_data, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_update_workshop_occurrence(talk_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update a workshop occurrence.
@@ -103,7 +103,7 @@ def tc_update_workshop_occurrence(talk_id: str, updates: dict, orgId: str, acces
     """
     return workshops.update_occurrence(talk_id, updates, orgId, access_token)
 
-@mcp.tool()
+#@mcp.tool()
 def tc_list_all_global_workshops(org_id: str, access_token: str, filter_type: int = 5, limit: int = 50, si: int = 0) -> dict:
     """
     List upcoming global live workshops (not tied to any course).
@@ -121,7 +121,7 @@ def tc_list_all_global_workshops(org_id: str, access_token: str, filter_type: in
     return workshops.list_all_upcoming_workshops(org_id, access_token, filter_type, limit, si)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_invite_user_to_session(session_id: str, email: str, orgId: str, access_token: str, role: int = 3, source: int = 1) -> dict:
     """
     Invite an existing user (by email) to a course-linked live workshop session.

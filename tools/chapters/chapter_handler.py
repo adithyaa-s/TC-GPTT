@@ -8,7 +8,7 @@ from tools.mcp_registry import mcp
 tc = TrainerCentralChapters()
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_chapter(section_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a new chapter (section) under a course in TrainerCentral.
@@ -49,7 +49,7 @@ def tc_create_chapter(section_data: dict, orgId: str, access_token: str) -> dict
     return tc.create_chapter(section_data, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_update_chapter(course_id: str, section_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing chapter's name and/or position in a course.
@@ -93,7 +93,7 @@ def tc_update_chapter(course_id: str, section_id: str, updates: dict, orgId: str
     return tc.update_chapter(course_id, section_id, updates, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_delete_chapter(course_id: str, section_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a chapter from a course in TrainerCentral.

@@ -8,7 +8,7 @@ from tools.mcp_registry import mcp
 tc = TrainerCentralCourses()
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
     """
     Create a new course in TrainerCentral.
@@ -51,7 +51,7 @@ def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
     return tc.post_course(course_data, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_get_course(course_id: str, orgId: str, access_token: str) -> dict:
     """
     Retrieve a course by its ID.
@@ -78,7 +78,7 @@ def tc_get_course(course_id: str, orgId: str, access_token: str) -> dict:
     return tc.get_course(course_id, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = None) -> dict:
     """
     List all courses (or a paginated subset).
@@ -107,7 +107,7 @@ def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = 
     return tc.list_courses(orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_update_course(course_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing course.
@@ -147,7 +147,7 @@ def tc_update_course(course_id: str, updates: dict, orgId: str, access_token: st
     return tc.update_course(course_id, updates, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_delete_course(course_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a course permanently.

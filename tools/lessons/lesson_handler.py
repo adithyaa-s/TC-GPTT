@@ -8,7 +8,7 @@ from library.lessons import TrainerCentralLessons
 tc_lessons = TrainerCentralLessons()
 
 
-# @mcp.tool()
+# #@mcp.tool()
 # def tc_create_lesson(session_data: dict) -> dict:
 #     """
 #     Create a new lesson under a course/chapter.
@@ -32,7 +32,7 @@ tc_lessons = TrainerCentralLessons()
 #     """
 #     return tc_lessons.create_lesson(session_data)
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_lesson(
     session_data: dict,
     content_html: str,
@@ -55,7 +55,7 @@ def tc_create_lesson(
     """
     return tc_lessons.create_lesson_with_content(session_data, content_html, orgId, access_token, content_filename)
 
-@mcp.tool()
+#@mcp.tool()
 def tc_update_lesson(session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing lesson in TrainerCentral.
@@ -86,7 +86,7 @@ def tc_update_lesson(session_id: str, updates: dict, orgId: str, access_token: s
     return tc_lessons.update_lesson(session_id, updates, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_delete_lesson(session_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a lesson (or live session) by session ID.

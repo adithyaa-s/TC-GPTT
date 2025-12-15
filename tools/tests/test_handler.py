@@ -4,7 +4,7 @@ from library.tests import TrainerCentralTests
 tc_tests = TrainerCentralTests()
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_full_test(session_id: str, name: str, description_html: str, questions: dict) -> dict:
     """
     Create a COMPLETE test under a lesson (session).
@@ -124,7 +124,7 @@ def tc_create_full_test(session_id: str, name: str, description_html: str, quest
     return tc_tests.create_full_test(session_id, name, description_html, questions)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_test_form(session_id: str, name: str, description_html: str) -> dict:
     """
     Create ONLY the test form (step 1 of test creation).
@@ -152,7 +152,7 @@ def tc_create_test_form(session_id: str, name: str, description_html: str) -> di
     return tc_tests.create_test_form(session_id, name, description_html)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_add_test_questions(session_id: str, form_id_value: str, questions: dict) -> dict:
     """
     Add questions to an EXISTING form.
@@ -182,7 +182,7 @@ def tc_add_test_questions(session_id: str, form_id_value: str, questions: dict) 
     return tc_tests.add_questions(session_id, form_id_value, questions)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_get_course_sessions(course_id: str) -> dict:
     """
     Fetch all sessions of a given course.

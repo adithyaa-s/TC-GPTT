@@ -8,7 +8,7 @@ from library.course_live_workshops import TrainerCentralLiveWorkshops
 tc_live = TrainerCentralLiveWorkshops()
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_course_live_session(
     course_id: str,
     name: str,
@@ -38,7 +38,7 @@ def tc_create_course_live_session(
     )
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_list_course_live_sessions(
     orgId: str,  # FIXED: Added orgId
     access_token: str,  # FIXED: Added access_token
@@ -66,7 +66,7 @@ def tc_list_course_live_sessions(
     return tc_live.list_upcoming_live_sessions(orgId, access_token, filter_type, limit, si)
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_delete_course_live_session(
     session_id: str,
     orgId: str,  # FIXED: Added orgId
@@ -90,7 +90,7 @@ def tc_delete_course_live_session(
     return tc_live.delete_live_session(session_id, orgId, access_token)
 
 
-@mcp.tool()
+#@mcp.tool()
 def invite_learner_to_course_or_course_live_session(
     email: str,
     first_name: str,

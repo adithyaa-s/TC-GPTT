@@ -8,7 +8,7 @@ from library.assignments import TrainerCentralAssignments
 tc_assignments = TrainerCentralAssignments()
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_create_assignment(assignment_data: dict,
                          instruction_html: str,
                          instruction_filename: str = "Instructions",
@@ -58,7 +58,7 @@ def tc_create_assignment(assignment_data: dict,
     )
 
 
-@mcp.tool()
+#@mcp.tool()
 def tc_delete_assignment(session_id: str) -> dict:
     """
     Delete an existing assignment (or session) by session ID.
