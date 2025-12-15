@@ -19,6 +19,7 @@ def main():
 if __name__ == "__main__":
     main()
 
+
 # """
 # App.py for uvicorn - properly initializes FastMCP with HTTP transport
 # """
@@ -47,7 +48,7 @@ if __name__ == "__main__":
 # app = FastAPI(title="TrainerCentral MCP Server")
 
 # # Configuration
-# DOMAIN = os.getenv("DOMAIN", "https://tc-tgpt-auth.onrender.com")
+# DOMAIN = os.getenv("DOMAIN", "https://tc-cgpt.onrender.com")
 # AUTH_SERVER = "https://accounts.zoho.in"
 
 # # Add CORS
@@ -262,19 +263,14 @@ if __name__ == "__main__":
 # @app.get("/")
 # async def root():
 #     """Root endpoint - server info"""
-#     print("TOOLS:", mcp)
 #     return {
 #         "name": "TrainerCentral MCP Server",
 #         "version": "1.0.0",
-#         "protocol": "mcp",
-#         "tools_count": mcp._tools,
-#         "status": "running"
+#         "protocol": "mcp"
 #     }
 
 
 # # For running directly with python app.py
 # if __name__ == "__main__":
 #     import uvicorn
-#     print("TOOLS:", mcp.tools)
-
 #     uvicorn.run(app, host="0.0.0.0", port=8000)
