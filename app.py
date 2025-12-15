@@ -40,6 +40,7 @@ import tools.chapters.chapter_handler
 import tools.lessons.lesson_handler
 import tools.live_workshops.live_workshop_handler
 import tools.course_live_workshops.course_live_workshop_handler
+from library.oauth import get_orgId
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -214,6 +215,8 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
     method = body.get("method")
     params = body.get("params", {})
     request_id = body.get("id")
+    auth_token = authorization.split("")[1]
+    orgId = get_orgId(auth_token)
     
     # Handle MCP protocol methods
     if method == "initialize":
