@@ -201,6 +201,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
     """
     try:
         body = await request.json()
+        logger.info("Headers - Auth ", authorization)
     except Exception:
         return {
             "jsonrpc": "2.0",
@@ -550,12 +551,6 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
         tool_name = params.get("name")
         arguments = params.get("arguments", {})
         
-        # Add auth info to arguments
-        access_token = authorization.replace("Bearer ", "")
-        org_id = os.getenv("ORG_ID", "")
-        
-        arguments["orgId"] = org_id
-        arguments["access_token"] = access_token
         
         try:
             # Call the tool from our registry

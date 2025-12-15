@@ -67,3 +67,21 @@ class ZohoOAuth:
         if not self.access_token or time.time() >= self.expires_at:
             return self.refresh_access_token()
         return self.access_token
+
+def get_orgId(access_token: str) -> str:
+    """
+    Retrieve the organization ID from "https://myacademy.trainercentral.in/api/v4/org/portals.json".
+    Returns:
+        str: The organization ID.
+    """
+    
+    url = "https://myacademy.trainercentral.in/api/v4/org/portals.json"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    resp = requests.get(url, headers=headers)
+    data = resp.json()
+    orgId = data.split('"id": "')[1].split('"')[0]
+    return orgId
