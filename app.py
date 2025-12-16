@@ -1,5 +1,6 @@
 """
-OrgId Management
+COMPLETE WORKING APP.PY - No Syntax Errors
+Fixed domain configuration and proper orgId handling
 """
 
 import os
@@ -10,7 +11,6 @@ import json
 import logging
 
 from tools.portals.portal_handler import tc_get_org_id
-
 from tools.courses.course_handler import (
     tc_create_course,
     tc_get_course,
@@ -48,27 +48,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TrainerCentral MCP Server")
 
+# CORRECTED CONFIGURATION - Two separate domains
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://tc-gptt.onrender.com")
 TC_API_BASE_URL = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
 AUTH_SERVER = "https://accounts.zoho.in"
 
-@app.get("/.well-known/oauth-protected-resource")
-async def oauth_metadata():
-    return {
-        "resource": MCP_SERVER_URL,
-        "authorization_servers": [AUTH_SERVER],
-        "scopes_supported": [...],
-        "resource_documentation": f"{MCP_SERVER_URL}/docs"
-    }
-
-# And in tools/call error responses:
-"_meta": {
-    "mcp/www_authenticate": [
-        f'Bearer resource_metadata="{MCP_SERVER_URL}/.well-known/oauth-protected-resource"'
-    ]
-}
-
-
+logger.info(f"MCP Server: {MCP_SERVER_URL}")
+logger.info(f"TC API: {TC_API_BASE_URL}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -78,35 +64,24 @@ app.add_middleware(
 )
 
 TOOL_REGISTRY = {
-    # Portal Management 
     "tc_get_org_id": tc_get_org_id,
-
-    # Courses
     "tc_create_course": tc_create_course,
     "tc_get_course": tc_get_course,
     "tc_list_courses": tc_list_courses,
     "tc_update_course": tc_update_course,
     "tc_delete_course": tc_delete_course,
-    
-    # Chapters
     "tc_create_chapter": tc_create_chapter,
     "tc_update_chapter": tc_update_chapter,
     "tc_delete_chapter": tc_delete_chapter,
-    
-    # Lessons
     "tc_create_lesson": tc_create_lesson,
     "tc_update_lesson": tc_update_lesson,
     "tc_delete_lesson": tc_delete_lesson,
-    
-    # Global Workshops
     "tc_create_workshop": tc_create_workshop,
     "tc_update_workshop": tc_update_workshop,
     "tc_create_workshop_occurrence": tc_create_workshop_occurrence,
     "tc_update_workshop_occurrence": tc_update_workshop_occurrence,
     "tc_list_all_global_workshops": tc_list_all_global_workshops,
     "tc_invite_user_to_session": tc_invite_user_to_session,
-    
-    # Course Live Workshops
     "tc_create_course_live_session": tc_create_course_live_session,
     "tc_list_course_live_sessions": tc_list_course_live_sessions,
     "tc_delete_course_live_session": tc_delete_course_live_session,
@@ -119,7 +94,7 @@ logger.info(f"Registered {len(TOOL_REGISTRY)} tools")
 @app.get("/.well-known/oauth-protected-resource")
 async def oauth_metadata():
     return {
-        "resource": DOMAIN,
+        "resource": MCP_SERVER_URL,
         "authorization_servers": [AUTH_SERVER],
         "scopes_supported": [
             "TrainerCentral.sessionapi.ALL",
@@ -129,7 +104,7 @@ async def oauth_metadata():
             "TrainerCentral.talkapi.ALL",
             "TrainerCentral.portalapi.READ"
         ],
-        "resource_documentation": f"{DOMAIN}/docs"
+        "resource_documentation": f"{MCP_SERVER_URL}/docs"
     }
 
 
@@ -170,13 +145,11 @@ async def health():
 @app.post("/mcp")
 @app.post("/mcp/")
 async def mcp_handler_alias(request: Request, authorization: Optional[str] = Header(None)):
-    """Alias for ChatGPT custom connectors that expect /mcp/ path"""
     return await mcp_handler(request, authorization)
 
 
 @app.post("/")
 async def mcp_handler(request: Request, authorization: Optional[str] = Header(None)):
-    """Main MCP endpoint that handles JSON-RPC 2.0 requests"""
     try:
         body = await request.json()
     except Exception:
@@ -190,10 +163,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
     request_id = body.get("id")
     
     logger.info("=" * 80)
-    logger.info(f"MCP Request: method={method}")
-    logger.info(f"Authorization: {authorization[:50] if authorization else 'None'}...")
+    logger.info(f"Method: {method}")
     logger.info("=" * 80)
-
+    
     if method == "initialize":
         return {
             "jsonrpc": "2.0",
@@ -208,48 +180,40 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             }
         }
     
-    
     elif method == "tools/list":
         tools_list = [
-            # PORTAL MANAGEMENT 
             {
                 "name": "tc_get_org_id",
-                "description": "Get all portals (organizations) for the authenticated user. IMPORTANT: Call this tool FIRST at the start of every conversation to get the orgId, then use that orgId for all subsequent operations.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "description": "Get organizations. Call FIRST in every conversation.",
+                "inputSchema": {"type": "object", "properties": {}, "required": []}
             },
-            
-            # COURSES (require orgId)
             {
                 "name": "tc_create_course",
-                "description": "Create a new course in TrainerCentral. Requires orgId from tc_get_org_id.",
+                "description": "Create course. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "orgId": {"type": "string", "description": "Organization ID from tc_get_org_id"},
-                        "course_data": {"type": "object", "description": "Course details"}
+                        "orgId": {"type": "string"},
+                        "course_data": {"type": "object"}
                     },
                     "required": ["orgId", "course_data"]
                 }
             },
             {
                 "name": "tc_get_course",
-                "description": "Get course details by ID. Requires orgId.",
+                "description": "Get course. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "courseId": {"type": "string"}
+                        "course_id": {"type": "string"}
                     },
-                    "required": ["orgId", "courseId"]
+                    "required": ["orgId", "course_id"]
                 }
             },
             {
                 "name": "tc_list_courses",
-                "description": "List all courses. Requires orgId.",
+                "description": "List courses. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -262,34 +226,32 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             },
             {
                 "name": "tc_update_course",
-                "description": "Update a course. Requires orgId.",
+                "description": "Update course. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "courseId": {"type": "string"},
+                        "course_id": {"type": "string"},
                         "updates": {"type": "object"}
                     },
-                    "required": ["orgId", "courseId", "updates"]
+                    "required": ["orgId", "course_id", "updates"]
                 }
             },
             {
                 "name": "tc_delete_course",
-                "description": "Delete a course. Requires orgId.",
+                "description": "Delete course. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "courseId": {"type": "string"}
+                        "course_id": {"type": "string"}
                     },
-                    "required": ["orgId", "courseId"]
+                    "required": ["orgId", "course_id"]
                 }
             },
-            
-            # CHAPTERS (require orgId)
             {
                 "name": "tc_create_chapter",
-                "description": "Create a chapter. Requires orgId.",
+                "description": "Create chapter. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -301,36 +263,34 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             },
             {
                 "name": "tc_update_chapter",
-                "description": "Update a chapter. Requires orgId.",
+                "description": "Update chapter. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "courseId": {"type": "string"},
+                        "course_id": {"type": "string"},
                         "section_id": {"type": "string"},
                         "updates": {"type": "object"}
                     },
-                    "required": ["orgId", "courseId", "section_id", "updates"]
+                    "required": ["orgId", "course_id", "section_id", "updates"]
                 }
             },
             {
                 "name": "tc_delete_chapter",
-                "description": "Delete a chapter. Requires orgId.",
+                "description": "Delete chapter. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "courseId": {"type": "string"},
+                        "course_id": {"type": "string"},
                         "section_id": {"type": "string"}
                     },
-                    "required": ["orgId", "courseId", "section_id"]
+                    "required": ["orgId", "course_id", "section_id"]
                 }
             },
-            
-            # LESSONS (require orgId)
             {
                 "name": "tc_create_lesson",
-                "description": "Create a lesson. Requires orgId.",
+                "description": "Create lesson. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -344,7 +304,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             },
             {
                 "name": "tc_update_lesson",
-                "description": "Update a lesson. Requires orgId.",
+                "description": "Update lesson. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -357,7 +317,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             },
             {
                 "name": "tc_delete_lesson",
-                "description": "Delete a lesson. Requires orgId.",
+                "description": "Delete lesson. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -367,11 +327,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "required": ["orgId", "session_id"]
                 }
             },
-            
-            # WORKSHOPS (require orgId)
             {
                 "name": "tc_create_workshop",
-                "description": "Create a global workshop. Requires orgId.",
+                "description": "Create workshop. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -383,7 +341,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             },
             {
                 "name": "tc_update_workshop",
-                "description": "Update a workshop. Requires orgId.",
+                "description": "Update workshop. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -448,22 +406,20 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "required": ["orgId", "session_id", "email"]
                 }
             },
-            
-            # COURSE LIVE WORKSHOPS (require orgId)
             {
                 "name": "tc_create_course_live_session",
-                "description": "Create course live session. Requires orgId. Date format: DD-MM-YYYY HH:MMAM/PM",
+                "description": "Create course live session. Requires orgId.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "courseId": {"type": "string"},
+                        "course_id": {"type": "string"},
                         "name": {"type": "string"},
                         "description_html": {"type": "string"},
                         "start_time": {"type": "string"},
                         "end_time": {"type": "string"}
                     },
-                    "required": ["orgId", "courseId", "name", "description_html", "start_time", "end_time"]
+                    "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
                 }
             },
             {
@@ -502,7 +458,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                         "email": {"type": "string"},
                         "first_name": {"type": "string"},
                         "last_name": {"type": "string"},
-                        "courseId": {"type": "string"},
+                        "course_id": {"type": "string"},
                         "session_id": {"type": "string"}
                     },
                     "required": ["orgId", "email", "first_name", "last_name"]
@@ -516,64 +472,40 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             "result": {"tools": tools_list}
         }
     
-    # =========================================================================
-    # HANDLE: tools/call - THE KEY SECTION
-    # =========================================================================
     elif method == "tools/call":
-        # Check authentication
         if not authorization or not authorization.startswith("Bearer "):
-            logger.warning("No authorization header")
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "result": {
                     "content": [{"type": "text", "text": "Authentication required"}],
-                    "_meta": {"mcp/www_authenticate": [f'Bearer resource_metadata="{DOMAIN}/.well-known/oauth-protected-resource"']},
                     "isError": True
                 }
             }
         
-     
         access_token = authorization.replace("Bearer ", "").strip()
-        logger.info(f"Access token: {access_token[:20]}...")
-        
-        # Get tool info
         tool_name = params.get("name")
         arguments = params.get("arguments", {})
         
         logger.info(f"Tool: {tool_name}")
-        logger.info(f"Args from ChatGPT: {arguments}")
+        logger.info(f"Args: {arguments}")
         
         if tool_name == "tc_get_org_id":
-            # Only inject access_token
             arguments["access_token"] = access_token
-            logger.info("Special handling for tc_get_org_id - no orgId injection")
         else:
-            # For ALL other tools: inject access_token, expect orgId from ChatGPT
             arguments["access_token"] = access_token
-            
-            # Verify ChatGPT provided orgId
             if "orgId" not in arguments:
-                logger.warning(f"⚠️ Tool {tool_name} called without orgId!")
-                logger.warning("ChatGPT should call tc_get_org_id first and pass orgId")
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
                     "result": {
-                        "content": [{
-                            "type": "text",
-                            "text": "Error: orgId is required. Please call tc_get_org_id() first to get your organization ID, then pass it to this tool."
-                        }],
+                        "content": [{"type": "text", "text": "orgId required. Call tc_get_org_id() first."}],
                         "isError": True
                     }
                 }
         
-        logger.info(f"Final args: {arguments}")
-        
-        # Call the tool
         try:
             if tool_name not in TOOL_REGISTRY:
-                logger.error(f"Tool not found: {tool_name}")
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
@@ -583,7 +515,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             tool_func = TOOL_REGISTRY[tool_name]
             result = tool_func(**arguments)
             
-            logger.info(f"✅ Tool {tool_name} executed successfully")
+            logger.info(f"✅ Success")
             
             return {
                 "jsonrpc": "2.0",
@@ -593,16 +525,6 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 }
             }
             
-        except TypeError as e:
-            logger.error(f"❌ TypeError: {str(e)}")
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"type": "text", "text": f"Parameter mismatch: {str(e)}"}],
-                    "isError": True
-                }
-            }
         except Exception as e:
             logger.error(f"❌ Error: {str(e)}", exc_info=True)
             return {
@@ -624,56 +546,13 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
 
 @app.get("/")
 async def root():
-    """Root endpoint with instructions for ChatGPT"""
     return {
         "name": "TrainerCentral MCP Server",
         "version": "1.0.0",
         "protocol": "mcp",
         "tools_count": len(TOOL_REGISTRY),
         "tools": list(TOOL_REGISTRY.keys()),
-        
-        "instructions": """
-CRITICAL WORKFLOW FOR ALL CONVERSATIONS:
-
-1. START EVERY CONVERSATION:
-   - First action: Call tc_get_org_id() to get user's organization(s)
-   - Response: {default_org_id: "...", portals: [...], total_portals: N}
-
-2. IF USER HAS MULTIPLE ORGANIZATIONS (total_portals > 1):
-   - Show user the list: "I found 2 organizations: 1) Test (60058756004), 2) Secondary (60061345029)"
-   - Ask: "Which organization would you like to use?"
-   - Wait for user response
-   - Store their chosen orgId
-
-3. IF USER HAS SINGLE ORGANIZATION (total_portals = 1):
-   - Automatically use the default_org_id
-   - Store it in conversation context
-   - Proceed with user's request without asking
-
-4. FOR ALL SUBSEQUENT TOOL CALLS:
-   - ALWAYS pass the stored orgId as a parameter
-   - Example: tc_create_course(orgId="60058756004", course_data={...})
-   - Example: tc_list_courses(orgId="60058756004")
-
-5. MEMORY - CRITICAL:
-   - Store orgId in conversation context for the ENTIRE chat session
-   - DO NOT call tc_get_org_id() on every request
-   - Only call it again if user wants to switch organizations
-
-EXAMPLE CONVERSATION:
-User: "Create a Python course"
-→ Step 1: Call tc_get_org_id()
-→ Step 2: Get {total_portals: 1, default_org_id: "60058756004"}
-→ Step 3: Store orgId = "60058756004"
-→ Step 4: Call tc_create_course(orgId="60058756004", course_data={...})
-
-User (later): "List my courses"
-→ Use stored orgId: "60058756004"
-→ Call tc_list_courses(orgId="60058756004")
-→ DO NOT call tc_get_org_id() again
-
-IMPORTANT: Call tc_get_org_id() ONCE per conversation, not on every tool call.
-        """
+        "instructions": "Call tc_get_org_id() first to get orgId, then pass it to all other tools."
     }
 
 
