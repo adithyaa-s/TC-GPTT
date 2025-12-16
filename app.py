@@ -25,6 +25,7 @@ from tools.chapters.chapter_handler import (
 )
 from tools.lessons.lesson_handler import (
     tc_create_lesson,
+    tc_get_course_lessons,
     tc_update_lesson,
     tc_delete_lesson
 )
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TrainerCentral MCP Server")
 
-# CORRECTED CONFIGURATION - Two separate domains
+
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://tc-gptt.onrender.com")
 TC_API_BASE_URL = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
 AUTH_SERVER = "https://accounts.zoho.in"
@@ -74,6 +75,7 @@ TOOL_REGISTRY = {
     "tc_update_chapter": tc_update_chapter,
     "tc_delete_chapter": tc_delete_chapter,
     "tc_create_lesson": tc_create_lesson,
+    "tc_get_course_lessons": tc_get_course_lessons,
     "tc_update_lesson": tc_update_lesson,
     "tc_delete_lesson": tc_delete_lesson,
     "tc_create_workshop": tc_create_workshop,
@@ -206,9 +208,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"}
+                        "courseId": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id"]
+                    "required": ["orgId", "courseId"]
                 }
             },
             {
@@ -231,10 +233,10 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "updates": {"type": "object"}
                     },
-                    "required": ["orgId", "course_id", "updates"]
+                    "required": ["orgId", "courseId", "updates"]
                 }
             },
             {
@@ -244,9 +246,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"}
+                        "courseId": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id"]
+                    "required": ["orgId", "courseId"]
                 }
             },
             {
@@ -268,11 +270,11 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "section_id": {"type": "string"},
                         "updates": {"type": "object"}
                     },
-                    "required": ["orgId", "course_id", "section_id", "updates"]
+                    "required": ["orgId", "courseId", "section_id", "updates"]
                 }
             },
             {
@@ -282,10 +284,10 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "section_id": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id", "section_id"]
+                    "required": ["orgId", "courseId", "section_id"]
                 }
             },
             {
@@ -300,6 +302,18 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                         "content_filename": {"type": "string"}
                     },
                     "required": ["orgId", "session_data", "content_html"]
+                }
+            },
+            {
+                "name": "tc_get_course_lessons",
+                "description": "Get all lessons (sessions) for a specific course. Useful before creating tests or understanding course structure.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string", "description": "Organization ID from tc_get_org_id"},
+                        "courseId": {"type": "string", "description": "Course ID"}
+                    },
+                    "required": ["orgId", "courseId"]
                 }
             },
             {
@@ -413,13 +427,13 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "name": {"type": "string"},
                         "description_html": {"type": "string"},
                         "start_time": {"type": "string"},
                         "end_time": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
+                    "required": ["orgId", "courseId", "name", "description_html", "start_time", "end_time"]
                 }
             },
             {
@@ -458,7 +472,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                         "email": {"type": "string"},
                         "first_name": {"type": "string"},
                         "last_name": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "session_id": {"type": "string"}
                     },
                     "required": ["orgId", "email", "first_name", "last_name"]
