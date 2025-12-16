@@ -1,6 +1,9 @@
 import os
 import requests
 from .common_utils import TrainerCentralCommon
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TrainerCentralLessons:
     def __init__(self):
