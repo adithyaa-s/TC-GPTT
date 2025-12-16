@@ -27,22 +27,23 @@ class TrainerCentralCourses:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}"
         }
-        data = {"course": course_data}
+        
+        cleaned_data = course_data.copy()
+        if "courseCategories" in cleaned_data and not cleaned_data["courseCategories"]:
+            del cleaned_data["courseCategories"]
+        
+        data = {"course": cleaned_data}
 
-        # ENHANCED LOGGING
         logger.info("=" * 80)
         logger.info("CREATING COURSE IN TRAINERCENTRAL")
         logger.info(f"URL: {request_url}")
-        logger.info(f"Headers: {headers}")
         logger.info(f"Payload: {data}")
         logger.info("=" * 80)
         
         try:
             response = requests.post(request_url, json=data, headers=headers)
             
-            # Log the raw response
             logger.info(f"Response Status Code: {response.status_code}")
-            logger.info(f"Response Headers: {dict(response.headers)}")
             logger.info(f"Response Body: {response.text}")
             
             # Check if request was successful
@@ -50,11 +51,9 @@ class TrainerCentralCourses:
                 logger.error(f"❌ TrainerCentral API Error: {response.status_code}")
                 logger.error(f"Error Response: {response.text}")
             else:
-                logger.info("✅ Course creation request sent successfully")
+                logger.info("✅ Course created successfully")
             
             response_json = response.json()
-            logger.info(f"Parsed Response: {response_json}")
-            
             return response_json
             
         except requests.exceptions.RequestException as e:
@@ -117,7 +116,7 @@ class TrainerCentralCourses:
         request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        logger.info(f"Deleting course: {request_url}")
+        logger.info(f"Deleting course: {response.status_code}")
         response = requests.delete(request_url, headers=headers)
         logger.info(f"Delete course status: {response.status_code}")
         

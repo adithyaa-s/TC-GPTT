@@ -37,6 +37,49 @@ def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
             }
         }
 
+    Course Category: 
+    Default Category List
+
+    {name: "Art & Photos"},
+    {name: "Automotive"},
+    {name: "Business"},
+    {name: "Career"},
+    {name: "Data & Analytics"},
+    {name: "Design"},
+    {name: "Devices & Hardware"},
+    {name: "Economy & Finance"},
+    {name: "Education"},
+    {name: "Engineering"},
+    {name: "Entertainment & Humor"},
+    {name: "Environment"},
+    {name: "Food"},
+    {name: "Government & Nonprofit"},
+    {name: "Health & Medicine"},
+    {name: "Healthcare"},
+    {name: "Internet"},
+    {name: "Investor Relations"}
+    {name: "Law"}
+    {name: "Leadership & Management"}
+    {name: "Lifestyle"}
+    {name: "Marketing"}
+    {name: "Mobile"}
+    {name: "News & Politics"}
+    {name: "Presentations & Public Speaking"}
+    {name: "Real Estate"}
+    {name: "Recruiting & HR"}
+    {name: "Sales"}
+    {name: "Science"}
+    {name: "Self Improvement"}
+    {name: "Services"}
+    {name: "Small Business & Entrepreneurship"}
+    {name: "Social Media"}
+    {name: "Software"}
+    {name: "Spiritual"}
+    {name: "Sports"}
+    {name: "Technology"}
+    {name: "Travel"} 
+
+
     Note: Provide orgId and access token of the user, after OAuth, as parameters.  
 
     Required OAuth scope:
@@ -46,7 +89,6 @@ def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
         dict: API response, including:
             - ticket
             - course
-            - courseCategories
     """
     return tc.post_course(course_data, orgId, access_token)
 
