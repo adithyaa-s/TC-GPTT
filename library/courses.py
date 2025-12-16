@@ -1,10 +1,12 @@
 """
-TrainerCentral Course Management API Wrapper.
+TrainerCentral Course Management API Wrapper 
 """
 
 import os
 import requests
-# from .oauth import ZohoOAuth
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TrainerCentralCourses:
@@ -13,35 +15,12 @@ class TrainerCentralCourses:
     """
 
     def __init__(self):
-        # self.ORG_ID = os.getenv("ORG_ID")
         self.DOMAIN = os.getenv("DOMAIN")
         self.base_url = f"{self.DOMAIN}/api/v4"
-        # self.oauth = ZohoOAuth()
 
     def post_course(self, course_data: dict, orgId: str, access_token: str):
         """
         Create a new course in TrainerCentral.
-
-        API (Create Course) details:
-        - Method: POST  
-        - Endpoint: /api/v4/{orgId}/courses.json  
-        - OAuth Scope: TrainerCentral.courseapi.CREATE  
-
-        Body format:
-        {
-            "course": {
-                "courseName": "<Course Title>",
-                "subTitle": "<Subtitle>",
-                "description": "<Description>",
-                "courseCategories": [
-                    {"categoryName": "Category1"},
-                    {"categoryName": "Category2"}
-                ]
-            }
-        }
-
-        Returns:
-            dict: API response containing created course, ticket, category mapping, etc.
         """
         request_url = f"{self.base_url}/{orgId}/courses.json"
         headers = {
@@ -50,75 +29,70 @@ class TrainerCentralCourses:
         }
         data = {"course": course_data}
 
-        return requests.post(request_url, json=data, headers=headers).json()
+        # ENHANCED LOGGING
+        logger.info("=" * 80)
+        logger.info("CREATING COURSE IN TRAINERCENTRAL")
+        logger.info(f"URL: {request_url}")
+        logger.info(f"Headers: {headers}")
+        logger.info(f"Payload: {data}")
+        logger.info("=" * 80)
+        
+        try:
+            response = requests.post(request_url, json=data, headers=headers)
+            
+            # Log the raw response
+            logger.info(f"Response Status Code: {response.status_code}")
+            logger.info(f"Response Headers: {dict(response.headers)}")
+            logger.info(f"Response Body: {response.text}")
+            
+            # Check if request was successful
+            if response.status_code >= 400:
+                logger.error(f"❌ TrainerCentral API Error: {response.status_code}")
+                logger.error(f"Error Response: {response.text}")
+            else:
+                logger.info("✅ Course creation request sent successfully")
+            
+            response_json = response.json()
+            logger.info(f"Parsed Response: {response_json}")
+            
+            return response_json
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ HTTP Request failed: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Unexpected error: {str(e)}")
+            raise
 
     def get_course(self, course_id: str, orgId: str, access_token: str):
         """
         Fetch the details of a single course.
-
-        API (View Course) details:
-        - Method: GET  
-        - Endpoint: /api/v4/{orgId}/courses/{courseId}.json  
-
-        Returns:
-            dict: Contains course details such as:
-                - id / courseId  
-                - courseName  
-                - subTitle  
-                - description  
-                - links to sessions, tickets, etc.
         """
         request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        return requests.get(request_url, headers=headers).json()
+        logger.info(f"Getting course: {request_url}")
+        response = requests.get(request_url, headers=headers)
+        logger.info(f"Get course status: {response.status_code}")
+        
+        return response.json()
 
     def list_courses(self, orgId: str, access_token: str):
         """
         List all courses (or paginated subset) from TrainerCentral.
-
-        API (List Courses) details:
-        - Method: GET  
-        - Endpoint: /api/v4/{orgId}/courses.json  
-        - Query Params:
-            * limit  
-            * si (start index)
-
-        Returns:
-            dict with:
-            - "courses": list of courses  
-            - "courseCategories": mapping data  
-            - "meta": includes totalCourseCount
         """
         request_url = f"{self.base_url}/{orgId}/courses.json"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        return requests.get(request_url, headers=headers).json()
+        logger.info(f"Listing courses: {request_url}")
+        response = requests.get(request_url, headers=headers)
+        logger.info(f"List courses status: {response.status_code}")
+        
+        return response.json()
 
     def update_course(self, course_id: str, updates: dict, orgId: str, access_token: str):
         """
         Edit/update an existing TrainerCentral course.
-
-        API (Edit Course) details:
-        - Method: PUT  
-        - Endpoint: /api/v4/{orgId}/courses/{courseId}.json  
-        - OAuth Scope: TrainerCentral.courseapi.UPDATE  
-
-        Body:
-        {
-            "course": {
-                "courseName": "<New Title>",
-                "subTitle": "<New Subtitle>",
-                "description": "<Updated Description>",
-                "courseCategories": [
-                    {"categoryName": "Category1"},
-                    {"categoryName": "Category2"}
-                ]
-            }
-        }
-
-        Returns:
-            dict: Response containing the updated course object.
         """
         request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
         headers = {
@@ -127,21 +101,24 @@ class TrainerCentralCourses:
         }
         data = {"course": updates}
 
-        return requests.put(request_url, json=data, headers=headers).json()
+        logger.info(f"Updating course: {request_url}")
+        logger.info(f"Update data: {data}")
+        
+        response = requests.put(request_url, json=data, headers=headers)
+        logger.info(f"Update course status: {response.status_code}")
+        logger.info(f"Update response: {response.text}")
+        
+        return response.json()
 
     def delete_course(self, course_id: str, orgId: str, access_token: str):
         """
         Permanently delete a TrainerCentral course.
-
-        API (Delete Course) details:
-        - Method: DELETE  
-        - Endpoint: /api/v4/{orgId}/courses/{courseId}.json  
-        - OAuth Scope: TrainerCentral.courseapi.DELETE  
-
-        Returns:
-            dict: Response JSON from the delete call.
         """
         request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        return requests.delete(request_url, headers=headers).json()
+        logger.info(f"Deleting course: {request_url}")
+        response = requests.delete(request_url, headers=headers)
+        logger.info(f"Delete course status: {response.status_code}")
+        
+        return response.json()
