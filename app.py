@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="TrainerCentral MCP Server")
 
 
-DOMAIN = os.getenv("DOMAIN", "https://tc-tgpt-auth.onrender.com")
+DOMAIN = "https://tc-gptt.onrender.com"
 AUTH_SERVER = "https://accounts.zoho.in"
 
 
