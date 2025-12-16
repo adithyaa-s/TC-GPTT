@@ -142,7 +142,7 @@ class TrainerCentralTests:
             "questions": questions_resp
         }
 
-    def get_course_sessions(self, course_id: str) -> dict:
+    def get_course_sessions(self, courseId: str) -> dict:
       """
       Fetch all sessions (lessons) under a course.
 
@@ -176,7 +176,7 @@ class TrainerCentralTests:
       }
 
       # IMPORTANT: correct endpoint uses `courses` (plural)
-      course_url = f"{self.base_url}/courses/{course_id}.json"
+      course_url = f"{self.base_url}/courses/{courseId}.json"
       course_res = requests.get(course_url, headers=headers).json()
 
       # Validate structure

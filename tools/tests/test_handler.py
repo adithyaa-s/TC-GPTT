@@ -183,7 +183,7 @@ def tc_add_test_questions(session_id: str, form_id_value: str, questions: dict) 
 
 
 #@mcp.tool()
-def tc_get_course_sessions(course_id: str) -> dict:
+def tc_get_course_sessions(courseId: str) -> dict:
     """
     Fetch all sessions of a given course.
 
@@ -223,10 +223,10 @@ def tc_get_course_sessions(course_id: str) -> dict:
         - tc_create_full_test()
 
     Args:
-        course_id (str):
+        courseId (str):
             The courseId returned from getCourse.
 
     Returns:
         dict: sessions list and course info.
     """
-    return tc_tests.get_course_sessions(course_id)
+    return tc_tests.get_course_sessions(courseId)

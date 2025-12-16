@@ -63,11 +63,11 @@ class TrainerCentralCourses:
             logger.error(f"❌ Unexpected error: {str(e)}")
             raise
 
-    def get_course(self, course_id: str, orgId: str, access_token: str):
+    def get_course(self, courseId: str, orgId: str, access_token: str):
         """
         Fetch the details of a single course.
         """
-        request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
+        request_url = f"{self.base_url}/{orgId}/courses/{courseId}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
 
         logger.info(f"Getting course: {request_url}")
@@ -89,11 +89,11 @@ class TrainerCentralCourses:
         
         return response.json()
 
-    def update_course(self, course_id: str, updates: dict, orgId: str, access_token: str):
+    def update_course(self, courseId: str, updates: dict, orgId: str, access_token: str):
         """
         Edit/update an existing TrainerCentral course.
         """
-        request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
+        request_url = f"{self.base_url}/{orgId}/courses/{courseId}.json"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}"
@@ -109,11 +109,11 @@ class TrainerCentralCourses:
         
         return response.json()
 
-    def delete_course(self, course_id: str, orgId: str, access_token: str):
+    def delete_course(self, courseId: str, orgId: str, access_token: str):
         """
         Permanently delete a TrainerCentral course.
         """
-        request_url = f"{self.base_url}/{orgId}/courses/{course_id}.json"
+        request_url = f"{self.base_url}/{orgId}/courses/{courseId}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
 
         logger.info(f"Deleting course: {response.status_code}")

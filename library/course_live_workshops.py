@@ -32,7 +32,7 @@ class TrainerCentralLiveWorkshops:
         self,
         orgId: str,
         access_token: str,
-        course_id: str,
+        courseId: str,
         name: str,
         description_html: str,
         start_time_str: str,
@@ -53,7 +53,7 @@ class TrainerCentralLiveWorkshops:
         Args:
             orgId (str): Organization ID
             access_token (str): OAuth access token
-            course_id (str): Parent course ID
+            courseId (str): Parent course ID
             name (str): Workshop title
             description_html (str): Workshop description
             start_time_str (str): "DD-MM-YYYY HH:MMAM/PM"
@@ -76,7 +76,7 @@ class TrainerCentralLiveWorkshops:
             "session": {
                 "name": name,
                 "description": description_html,
-                "courseId": course_id,
+                "courseId": courseId,
                 "deliveryMode": 3,                
                 "scheduledTime": start_ms,
                 "scheduledEndTime": end_ms,
@@ -111,7 +111,7 @@ class TrainerCentralLiveWorkshops:
         access_token: str,
         first_name: str,
         last_name: str,
-        course_id: str = None,
+        courseId: str = None,
         session_id: str = None,
         is_access_granted: bool = True,
         expiry_time: int = None,
@@ -132,8 +132,8 @@ class TrainerCentralLiveWorkshops:
         }
         """
 
-        if not course_id and not session_id:
-            raise ValueError("You must provide either course_id or session_id.")
+        if not courseId and not session_id:
+            raise ValueError("You must provide either courseId or session_id.")
 
         url = f"{self.base_url}/{orgId}/addCourseAttendee.json"
 
@@ -149,8 +149,8 @@ class TrainerCentralLiveWorkshops:
             "isAccessGranted": is_access_granted
         }
 
-        if course_id:
-            attendee["courseId"] = course_id
+        if courseId:
+            attendee["courseId"] = courseId
         if session_id:
             attendee["sessionId"] = session_id
         if expiry_time:

@@ -94,7 +94,7 @@ def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
 
 
 #@mcp.tool()
-def tc_get_course(course_id: str, orgId: str, access_token: str) -> dict:
+def tc_get_course(courseId: str, orgId: str, access_token: str) -> dict:
     """
     Retrieve a course by its ID.
 
@@ -117,7 +117,7 @@ def tc_get_course(course_id: str, orgId: str, access_token: str) -> dict:
             - subTitle
             - links to sessions, tickets, etc.
     """
-    return tc.get_course(course_id, orgId, access_token)
+    return tc.get_course(courseId, orgId, access_token)
 
 
 #@mcp.tool()
@@ -150,7 +150,7 @@ def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = 
 
 
 #@mcp.tool()
-def tc_update_course(course_id: str, updates: dict, orgId: str, access_token: str) -> dict:
+def tc_update_course(courseId: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing course.
 
@@ -186,11 +186,11 @@ def tc_update_course(course_id: str, updates: dict, orgId: str, access_token: st
     Returns:
         dict: Updated course object.
     """
-    return tc.update_course(course_id, updates, orgId, access_token)
+    return tc.update_course(courseId, updates, orgId, access_token)
 
 
 #@mcp.tool()
-def tc_delete_course(course_id: str, orgId: str, access_token: str) -> dict:
+def tc_delete_course(courseId: str, orgId: str, access_token: str) -> dict:
     """
     Delete a course permanently.
 
@@ -208,4 +208,4 @@ def tc_delete_course(course_id: str, orgId: str, access_token: str) -> dict:
     Returns:
         dict: API delete response.
     """
-    return tc.delete_course(course_id, orgId, access_token)
+    return tc.delete_course(courseId, orgId, access_token)

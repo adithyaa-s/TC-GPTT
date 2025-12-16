@@ -10,7 +10,7 @@ tc_live = TrainerCentralLiveWorkshops()
 
 #@mcp.tool()
 def tc_create_course_live_session(
-    course_id: str,
+    courseId: str,
     name: str,
     description_html: str,
     start_time: str,
@@ -30,7 +30,7 @@ def tc_create_course_live_session(
     return tc_live.create_course_live_workshop(
         orgId=orgId,  # FIXED: Pass orgId first
         access_token=access_token,  # FIXED: Pass access_token second
-        course_id=course_id,
+        courseId=courseId,
         name=name,
         description_html=description_html,
         start_time_str=start_time,
@@ -97,7 +97,7 @@ def invite_learner_to_course_or_course_live_session(
     last_name: str,
     orgId: str,  # FIXED: Added orgId
     access_token: str,  # FIXED: Added access_token
-    course_id: str = None,
+    courseId: str = None,
     session_id: str = None,
     is_access_granted: bool = True,
     expiry_time: int = None,
@@ -123,7 +123,7 @@ def invite_learner_to_course_or_course_live_session(
         access_token=access_token,  # FIXED: Added access_token
         first_name=first_name,
         last_name=last_name,
-        course_id=course_id,
+        courseId=courseId,
         session_id=session_id,
         is_access_granted=is_access_granted,
         expiry_time=expiry_time,

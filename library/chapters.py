@@ -55,7 +55,7 @@ class TrainerCentralChapters:
 
         return requests.post(request_url, json=data, headers=headers).json()
 
-    def update_chapter(self, course_id: str, section_id: str, updates: dict, orgId: str, access_token: str):
+    def update_chapter(self, courseId: str, section_id: str, updates: dict, orgId: str, access_token: str):
         """
         Edit a chapter name or reorder a chapter inside a course.
 
@@ -74,7 +74,7 @@ class TrainerCentralChapters:
         }
 
         Args:
-            course_id (str): ID of the course that owns the chapter.
+            courseId (str): ID of the course that owns the chapter.
             section_id (str): ID of the chapter (section).
             updates (dict): fields to update.
 
@@ -82,7 +82,7 @@ class TrainerCentralChapters:
             dict: API response containing the updated section.
         """
         request_url = (
-            f"{self.base_url}/{orgId}/course/{course_id}/sections/{section_id}.json"
+            f"{self.base_url}/{orgId}/course/{courseId}/sections/{section_id}.json"
         )
         headers = {
             "Content-Type": "application/json",
@@ -92,7 +92,7 @@ class TrainerCentralChapters:
 
         return requests.put(request_url, json=data, headers=headers).json()
 
-    def delete_chapter(self, course_id: str, section_id: str, orgId: str, access_token: str):
+    def delete_chapter(self, courseId: str, section_id: str, orgId: str, access_token: str):
         """
         Delete a chapter from a course.
 
@@ -103,14 +103,14 @@ class TrainerCentralChapters:
         - OAuth Scope: TrainerCentral.sectionapi.DELETE
 
         Args:
-            course_id (str): ID of the course.
+            courseId (str): ID of the course.
             section_id (str): ID of the chapter (section).
 
         Returns:
             dict: Response JSON from the delete call.
         """
         request_url = (
-            f"{self.base_url}/{orgId}/course/{course_id}/sections/{section_id}.json"
+            f"{self.base_url}/{orgId}/course/{courseId}/sections/{section_id}.json"
         )
         headers = {
             "Authorization": f"Bearer {access_token}"

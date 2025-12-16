@@ -50,7 +50,7 @@ def tc_create_chapter(section_data: dict, orgId: str, access_token: str) -> dict
 
 
 #@mcp.tool()
-def tc_update_chapter(course_id: str, section_id: str, updates: dict, orgId: str, access_token: str) -> dict:
+def tc_update_chapter(courseId: str, section_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
     Update an existing chapter's name and/or position in a course.
 
@@ -78,7 +78,7 @@ def tc_update_chapter(course_id: str, section_id: str, updates: dict, orgId: str
         TrainerCentral.sectionapi.UPDATE
 
     Args:
-        course_id (str):
+        courseId (str):
             The ID of the course that owns the chapter.
         section_id (str):
             The ID of the chapter (section) to update.
@@ -90,11 +90,11 @@ def tc_update_chapter(course_id: str, section_id: str, updates: dict, orgId: str
     Returns:
         dict: API response containing the updated chapter (section) object.
     """
-    return tc.update_chapter(course_id, section_id, updates, orgId, access_token)
+    return tc.update_chapter(courseId, section_id, updates, orgId, access_token)
 
 
 #@mcp.tool()
-def tc_delete_chapter(course_id: str, section_id: str, orgId: str, access_token: str) -> dict:
+def tc_delete_chapter(courseId: str, section_id: str, orgId: str, access_token: str) -> dict:
     """
     Delete a chapter from a course in TrainerCentral.
 
@@ -113,7 +113,7 @@ def tc_delete_chapter(course_id: str, section_id: str, orgId: str, access_token:
         TrainerCentral.sectionapi.DELETE
 
     Args:
-        course_id (str):
+        courseId (str):
             The ID of the course that owns the chapter.
         section_id (str):
             The ID of the chapter (section) to delete.
@@ -122,4 +122,4 @@ def tc_delete_chapter(course_id: str, section_id: str, orgId: str, access_token:
         dict: API delete response (may be an empty object or status details,
               depending on TrainerCentral's response format).
     """
-    return tc.delete_chapter(course_id, section_id, orgId, access_token)
+    return tc.delete_chapter(courseId, section_id, orgId, access_token)

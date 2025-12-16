@@ -223,9 +223,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"}
+                        "courseId": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id"]
+                    "required": ["orgId", "courseId"]
                 }
             },
             {
@@ -248,10 +248,10 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "updates": {"type": "object"}
                     },
-                    "required": ["orgId", "course_id", "updates"]
+                    "required": ["orgId", "courseId", "updates"]
                 }
             },
             {
@@ -261,9 +261,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"}
+                        "courseId": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id"]
+                    "required": ["orgId", "courseId"]
                 }
             },
             
@@ -287,11 +287,11 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "section_id": {"type": "string"},
                         "updates": {"type": "object"}
                     },
-                    "required": ["orgId", "course_id", "section_id", "updates"]
+                    "required": ["orgId", "courseId", "section_id", "updates"]
                 }
             },
             {
@@ -301,10 +301,10 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "section_id": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id", "section_id"]
+                    "required": ["orgId", "courseId", "section_id"]
                 }
             },
             
@@ -438,13 +438,13 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "type": "object",
                     "properties": {
                         "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "name": {"type": "string"},
                         "description_html": {"type": "string"},
                         "start_time": {"type": "string"},
                         "end_time": {"type": "string"}
                     },
-                    "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
+                    "required": ["orgId", "courseId", "name", "description_html", "start_time", "end_time"]
                 }
             },
             {
@@ -483,7 +483,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                         "email": {"type": "string"},
                         "first_name": {"type": "string"},
                         "last_name": {"type": "string"},
-                        "course_id": {"type": "string"},
+                        "courseId": {"type": "string"},
                         "session_id": {"type": "string"}
                     },
                     "required": ["orgId", "email", "first_name", "last_name"]
