@@ -1,77 +1,12 @@
-"""
-OAuth handling for Zoho TrainerCentral API.
-"""
-
-import os
-import time
 import requests
-import dotenv
+import logging
 
-dotenv.load_dotenv()
+logger = logging.getLogger(__name__)
 
 
-class ZohoOAuth:
+def get_user_portals(access_token: str) -> dict:
     """
-    Handles OAuth2 authentication for Zoho APIs used by TrainerCentral.
-
-    This class manages:
-    - Storing client credentials
-    - Refreshing access tokens
-    - Automatically reusing or refreshing tokens when required
-    """
-
-    def __init__(self):
-        self.client_id = os.getenv("CLIENT_ID")
-        self.client_secret = os.getenv("CLIENT_SECRET")
-        self.refresh_token = os.getenv("REFRESH_TOKEN")
-        self.access_token = None
-        self.expires_at = 0
-
-    def refresh_access_token(self):
-        """
-        Refresh the Zoho OAuth2 access token using the stored refresh token.
-
-        Returns:
-            str: A new access token.
-
-        Raises:
-            Exception: If the response does not contain an "access_token".
-        """
-        url = "https://accounts.zoho.in/oauth/v2/token"
-        data = {
-            "refresh_token": self.refresh_token,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "grant_type": "refresh_token"
-        }
-
-        response = requests.post(url, data=data)
-        result = response.json()
-
-        if "access_token" not in result:
-            raise Exception(f"Failed to refresh access token: {result}")
-
-        self.access_token = result["access_token"]
-        self.expires_at = time.time() + int(result.get("expires_in", 3600))
-
-        return self.access_token
-
-    def get_access_token(self):
-        """
-        Return a valid access token.  
-        If the current token is expired or missing, it refreshes automatically.
-
-        Returns:
-            str: A valid Zoho access token.
-        """
-        if not self.access_token or time.time() >= self.expires_at:
-            return self.refresh_access_token()
-        return self.access_token
-
-
-def get_orgId(access_token: str) -> str:
-    """
-    Retrieve the organization ID from TrainerCentral.
+    Retrieve all portals (organizations) for the authenticated user.
     """
     url = "https://myacademy.trainercentral.in/api/v4/org/portals.json"
     headers = {
@@ -79,17 +14,64 @@ def get_orgId(access_token: str) -> str:
         "Content-Type": "application/json"
     }
 
-    resp = requests.get(url, headers=headers, timeout=10)
-    resp.raise_for_status()
+    try:
+        logger.info("Fetching user portals")
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
 
-    data = resp.json() 
+        data = resp.json()
 
-    portals = data.get("portals")
-    if not portals or not isinstance(portals, list):
-        raise ValueError("Invalid portals response structure")
+        portals = data.get("portals", [])
+        logger.info("Retrieved %d portals", len(portals))
 
-    org_id = portals[0].get("id")
-    if not org_id:
-        raise ValueError("orgId not found in response")
+        return data
 
-    return org_id
+    except requests.RequestException as e:
+        logger.exception("Failed to get portals")
+        raise RuntimeError("Failed to retrieve portals") from e
+
+
+def extract_default_org_id(portals_data: dict) -> str:
+    """
+    Extract the default portal's orgId.
+    """
+    portals = portals_data.get("portals", [])
+
+    for portal in portals:
+        if portal.get("isDefault") == "true":
+            org_id = portal.get("id")
+            logger.info(
+                "Found default portal: %s (%s)",
+                org_id,
+                portal.get("portalName")
+            )
+            return org_id
+
+    if portals:
+        org_id = portals[0].get("id")
+        logger.warning("No default portal, using first: %s", org_id)
+        return org_id
+
+    raise ValueError("No portals found for this user")
+
+
+def extract_all_org_ids(portals_data: dict) -> list[str]:
+    """
+    Extract all orgIds for the user.
+    
+    Returns:
+        list[str]: ["60058756004", "60061345029"]
+    """
+    portals = portals_data.get("portals", [])
+
+    org_ids = [
+        portal["id"]
+        for portal in portals
+        if "id" in portal
+    ]
+
+    if not org_ids:
+        raise ValueError("No orgIds found for this user")
+
+    logger.info("Extracted orgIds: %s", org_ids)
+    return org_ids

@@ -1,10 +1,5 @@
 """
-COMPLETE WORKING APP.PY WITH CONSISTENT AUTH INJECTION
-
-Key Changes:
-1. ALL functions now consistently use 'orgId' and 'access_token' as LAST two parameters
-2. Auth injection works for ALL tools
-3. Proper logging
+OrgId Management
 """
 
 import os
@@ -13,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import json
 import logging
-from fastapi.responses import JSONResponse
+
+from tools.portals.portal_handler import tc_get_org_id
 
 from tools.courses.course_handler import (
     tc_create_course,
@@ -46,18 +42,14 @@ from tools.course_live_workshops.course_live_workshop_handler import (
     tc_delete_course_live_session,
     invite_learner_to_course_or_course_live_session
 )
-from library.oauth import get_orgId
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 app = FastAPI(title="TrainerCentral MCP Server")
-
 
 DOMAIN = "https://tc-gptt.onrender.com"
 AUTH_SERVER = "https://accounts.zoho.in"
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,6 +59,9 @@ app.add_middleware(
 )
 
 TOOL_REGISTRY = {
+    # Portal Management 
+    "tc_get_org_id": tc_get_org_id,
+
     # Courses
     "tc_create_course": tc_create_course,
     "tc_get_course": tc_get_course,
@@ -102,7 +97,6 @@ TOOL_REGISTRY = {
 logger.info(f"Registered {len(TOOL_REGISTRY)} tools")
 
 
-# OAuth Protected Resource Metadata
 @app.get("/.well-known/oauth-protected-resource")
 async def oauth_metadata():
     return {
@@ -120,7 +114,6 @@ async def oauth_metadata():
     }
 
 
-# OAuth Authorization Server Metadata
 @app.get("/.well-known/oauth-authorization-server")
 async def oauth_server():
     return {
@@ -141,13 +134,11 @@ async def oauth_server():
     }
 
 
-# OpenID Connect Discovery
 @app.get("/.well-known/openid-configuration")
 async def openid_config():
     return await oauth_server()
 
 
-# Health check
 @app.get("/health")
 async def health():
     return {
@@ -160,40 +151,30 @@ async def health():
 @app.post("/mcp")
 @app.post("/mcp/")
 async def mcp_handler_alias(request: Request, authorization: Optional[str] = Header(None)):
-    """
-    Alias for ChatGPT custom connectors that expect /mcp/ path
-    """
+    """Alias for ChatGPT custom connectors that expect /mcp/ path"""
     return await mcp_handler(request, authorization)
-
 
 
 @app.post("/")
 async def mcp_handler(request: Request, authorization: Optional[str] = Header(None)):
-    """
-    Main MCP endpoint that handles JSON-RPC 2.0 requests
-    """
+    """Main MCP endpoint that handles JSON-RPC 2.0 requests"""
     try:
         body = await request.json()
     except Exception:
         return {
             "jsonrpc": "2.0",
-            "error": {
-                "code": -32700,
-                "message": "Parse error"
-            }
+            "error": {"code": -32700, "message": "Parse error"}
         }
     
     method = body.get("method")
     params = body.get("params", {})
     request_id = body.get("id")
     
-    # Log the request
     logger.info("=" * 80)
     logger.info(f"MCP Request: method={method}")
-    logger.info(f"Authorization header: {authorization}")
+    logger.info(f"Authorization: {authorization[:50] if authorization else 'None'}...")
     logger.info("=" * 80)
-    
-    # Handle MCP protocol methods that DON'T need auth
+
     if method == "initialize":
         return {
             "jsonrpc": "2.0",
@@ -208,60 +189,306 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             }
         }
     
+    
     elif method == "tools/list":
-        # Return tool schemas (no auth needed)
         tools_list = [
-            # COURSES
-            {"name": "tc_create_course", "description": "Create a new course in TrainerCentral", 
-             "inputSchema": {"type": "object", "properties": {"course_data": {"type": "object"}}, "required": ["course_data"]}},
-            {"name": "tc_get_course", "description": "Get course details by ID", 
-             "inputSchema": {"type": "object", "properties": {"course_id": {"type": "string"}}, "required": ["course_id"]}},
-            {"name": "tc_list_courses", "description": "List all courses", 
-             "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer"}, "si": {"type": "integer"}}}},
-            {"name": "tc_update_course", "description": "Update a course", 
-             "inputSchema": {"type": "object", "properties": {"course_id": {"type": "string"}, "updates": {"type": "object"}}, "required": ["course_id", "updates"]}},
-            {"name": "tc_delete_course", "description": "Delete a course", 
-             "inputSchema": {"type": "object", "properties": {"course_id": {"type": "string"}}, "required": ["course_id"]}},
+            # PORTAL MANAGEMENT 
+            {
+                "name": "tc_get_org_id",
+                "description": "Get all portals (organizations) for the authenticated user. IMPORTANT: Call this tool FIRST at the start of every conversation to get the orgId, then use that orgId for all subsequent operations.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
             
-            # CHAPTERS
-            {"name": "tc_create_chapter", "description": "Create a chapter under a course", 
-             "inputSchema": {"type": "object", "properties": {"section_data": {"type": "object"}}, "required": ["section_data"]}},
-            {"name": "tc_update_chapter", "description": "Update a chapter", 
-             "inputSchema": {"type": "object", "properties": {"course_id": {"type": "string"}, "section_id": {"type": "string"}, "updates": {"type": "object"}}, "required": ["course_id", "section_id", "updates"]}},
-            {"name": "tc_delete_chapter", "description": "Delete a chapter", 
-             "inputSchema": {"type": "object", "properties": {"course_id": {"type": "string"}, "section_id": {"type": "string"}}, "required": ["course_id", "section_id"]}},
+            # COURSES (require orgId)
+            {
+                "name": "tc_create_course",
+                "description": "Create a new course in TrainerCentral. Requires orgId from tc_get_org_id.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string", "description": "Organization ID from tc_get_org_id"},
+                        "course_data": {"type": "object", "description": "Course details"}
+                    },
+                    "required": ["orgId", "course_data"]
+                }
+            },
+            {
+                "name": "tc_get_course",
+                "description": "Get course details by ID. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"}
+                    },
+                    "required": ["orgId", "course_id"]
+                }
+            },
+            {
+                "name": "tc_list_courses",
+                "description": "List all courses. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "limit": {"type": "integer"},
+                        "si": {"type": "integer"}
+                    },
+                    "required": ["orgId"]
+                }
+            },
+            {
+                "name": "tc_update_course",
+                "description": "Update a course. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "updates": {"type": "object"}
+                    },
+                    "required": ["orgId", "course_id", "updates"]
+                }
+            },
+            {
+                "name": "tc_delete_course",
+                "description": "Delete a course. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"}
+                    },
+                    "required": ["orgId", "course_id"]
+                }
+            },
             
-            # LESSONS
-            {"name": "tc_create_lesson", "description": "Create a lesson with content", 
-             "inputSchema": {"type": "object", "properties": {"session_data": {"type": "object"}, "content_html": {"type": "string"}, "content_filename": {"type": "string"}}, "required": ["session_data", "content_html"]}},
-            {"name": "tc_update_lesson", "description": "Update a lesson", 
-             "inputSchema": {"type": "object", "properties": {"session_id": {"type": "string"}, "updates": {"type": "object"}}, "required": ["session_id", "updates"]}},
-            {"name": "tc_delete_lesson", "description": "Delete a lesson", 
-             "inputSchema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}},
+            # CHAPTERS (require orgId)
+            {
+                "name": "tc_create_chapter",
+                "description": "Create a chapter. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "section_data": {"type": "object"}
+                    },
+                    "required": ["orgId", "section_data"]
+                }
+            },
+            {
+                "name": "tc_update_chapter",
+                "description": "Update a chapter. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "section_id": {"type": "string"},
+                        "updates": {"type": "object"}
+                    },
+                    "required": ["orgId", "course_id", "section_id", "updates"]
+                }
+            },
+            {
+                "name": "tc_delete_chapter",
+                "description": "Delete a chapter. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "section_id": {"type": "string"}
+                    },
+                    "required": ["orgId", "course_id", "section_id"]
+                }
+            },
             
-            # GLOBAL WORKSHOPS
-            {"name": "tc_create_workshop", "description": "Create a global live workshop", 
-             "inputSchema": {"type": "object", "properties": {"session_data": {"type": "object"}}, "required": ["session_data"]}},
-            {"name": "tc_update_workshop", "description": "Update a workshop", 
-             "inputSchema": {"type": "object", "properties": {"session_id": {"type": "string"}, "updates": {"type": "object"}}, "required": ["session_id", "updates"]}},
-            {"name": "tc_create_workshop_occurrence", "description": "Create a workshop occurrence", 
-             "inputSchema": {"type": "object", "properties": {"talk_data": {"type": "object"}}, "required": ["talk_data"]}},
-            {"name": "tc_update_workshop_occurrence", "description": "Update a workshop occurrence", 
-             "inputSchema": {"type": "object", "properties": {"talk_id": {"type": "string"}, "updates": {"type": "object"}}, "required": ["talk_id", "updates"]}},
-            {"name": "tc_list_all_global_workshops", "description": "List all upcoming global workshops", 
-             "inputSchema": {"type": "object", "properties": {"filter_type": {"type": "integer"}, "limit": {"type": "integer"}, "si": {"type": "integer"}}}},
-            {"name": "tc_invite_user_to_session", "description": "Invite user to a session", 
-             "inputSchema": {"type": "object", "properties": {"session_id": {"type": "string"}, "email": {"type": "string"}, "role": {"type": "integer"}, "source": {"type": "integer"}}, "required": ["session_id", "email"]}},
+            # LESSONS (require orgId)
+            {
+                "name": "tc_create_lesson",
+                "description": "Create a lesson. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_data": {"type": "object"},
+                        "content_html": {"type": "string"},
+                        "content_filename": {"type": "string"}
+                    },
+                    "required": ["orgId", "session_data", "content_html"]
+                }
+            },
+            {
+                "name": "tc_update_lesson",
+                "description": "Update a lesson. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_id": {"type": "string"},
+                        "updates": {"type": "object"}
+                    },
+                    "required": ["orgId", "session_id", "updates"]
+                }
+            },
+            {
+                "name": "tc_delete_lesson",
+                "description": "Delete a lesson. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_id": {"type": "string"}
+                    },
+                    "required": ["orgId", "session_id"]
+                }
+            },
             
-            # COURSE LIVE WORKSHOPS
-            {"name": "tc_create_course_live_session", "description": "Create a live workshop inside a course. Date format: DD-MM-YYYY HH:MMAM/PM", 
-             "inputSchema": {"type": "object", "properties": {"course_id": {"type": "string"}, "name": {"type": "string"}, "description_html": {"type": "string"}, "start_time": {"type": "string"}, "end_time": {"type": "string"}}, "required": ["course_id", "name", "description_html", "start_time", "end_time"]}},
-            {"name": "tc_list_course_live_sessions", "description": "List upcoming course live sessions", 
-             "inputSchema": {"type": "object", "properties": {"filter_type": {"type": "integer"}, "limit": {"type": "integer"}, "si": {"type": "integer"}}}},
-            {"name": "tc_delete_course_live_session", "description": "Delete a course live session", 
-             "inputSchema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}},
-            {"name": "invite_learner_to_course_or_course_live_session", "description": "Invite a learner to a course or course live session", 
-             "inputSchema": {"type": "object", "properties": {"email": {"type": "string"}, "first_name": {"type": "string"}, "last_name": {"type": "string"}, "course_id": {"type": "string"}, "session_id": {"type": "string"}}, "required": ["email", "first_name", "last_name"]}},
+            # WORKSHOPS (require orgId)
+            {
+                "name": "tc_create_workshop",
+                "description": "Create a global workshop. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_data": {"type": "object"}
+                    },
+                    "required": ["orgId", "session_data"]
+                }
+            },
+            {
+                "name": "tc_update_workshop",
+                "description": "Update a workshop. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_id": {"type": "string"},
+                        "updates": {"type": "object"}
+                    },
+                    "required": ["orgId", "session_id", "updates"]
+                }
+            },
+            {
+                "name": "tc_create_workshop_occurrence",
+                "description": "Create workshop occurrence. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "talk_data": {"type": "object"}
+                    },
+                    "required": ["orgId", "talk_data"]
+                }
+            },
+            {
+                "name": "tc_update_workshop_occurrence",
+                "description": "Update workshop occurrence. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "talk_id": {"type": "string"},
+                        "updates": {"type": "object"}
+                    },
+                    "required": ["orgId", "talk_id", "updates"]
+                }
+            },
+            {
+                "name": "tc_list_all_global_workshops",
+                "description": "List workshops. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "filter_type": {"type": "integer"},
+                        "limit": {"type": "integer"},
+                        "si": {"type": "integer"}
+                    },
+                    "required": ["orgId"]
+                }
+            },
+            {
+                "name": "tc_invite_user_to_session",
+                "description": "Invite user. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_id": {"type": "string"},
+                        "email": {"type": "string"},
+                        "role": {"type": "integer"},
+                        "source": {"type": "integer"}
+                    },
+                    "required": ["orgId", "session_id", "email"]
+                }
+            },
+            
+            # COURSE LIVE WORKSHOPS (require orgId)
+            {
+                "name": "tc_create_course_live_session",
+                "description": "Create course live session. Requires orgId. Date format: DD-MM-YYYY HH:MMAM/PM",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "description_html": {"type": "string"},
+                        "start_time": {"type": "string"},
+                        "end_time": {"type": "string"}
+                    },
+                    "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
+                }
+            },
+            {
+                "name": "tc_list_course_live_sessions",
+                "description": "List course live sessions. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "filter_type": {"type": "integer"},
+                        "limit": {"type": "integer"},
+                        "si": {"type": "integer"}
+                    },
+                    "required": ["orgId"]
+                }
+            },
+            {
+                "name": "tc_delete_course_live_session",
+                "description": "Delete course live session. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "session_id": {"type": "string"}
+                    },
+                    "required": ["orgId", "session_id"]
+                }
+            },
+            {
+                "name": "invite_learner_to_course_or_course_live_session",
+                "description": "Invite learner. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "email": {"type": "string"},
+                        "first_name": {"type": "string"},
+                        "last_name": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "session_id": {"type": "string"}
+                    },
+                    "required": ["orgId", "email", "first_name", "last_name"]
+                }
+            }
         ]
         
         return {
@@ -270,9 +497,13 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             "result": {"tools": tools_list}
         }
     
+    # =========================================================================
+    # HANDLE: tools/call - THE KEY SECTION
+    # =========================================================================
     elif method == "tools/call":
+        # Check authentication
         if not authorization or not authorization.startswith("Bearer "):
-            logger.warning("No authorization header provided")
+            logger.warning("No authorization header")
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -283,35 +514,47 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 }
             }
         
+     
         access_token = authorization.replace("Bearer ", "").strip()
+        logger.info(f"Access token: {access_token[:20]}...")
         
-        try:
-            orgId = get_orgId(access_token)
-            logger.info(f"Retrieved orgId: {orgId}")
-        except Exception as e:
-            logger.error(f"Failed to get orgId: {str(e)}", exc_info=True)
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"type": "text", "text": f"Failed to retrieve organization ID: {str(e)}"}],
-                    "isError": True
-                }
-            }
-        
+        # Get tool info
         tool_name = params.get("name")
         arguments = params.get("arguments", {})
         
         logger.info(f"Tool: {tool_name}")
         logger.info(f"Args from ChatGPT: {arguments}")
         
-        arguments["orgId"] = orgId
-        arguments["access_token"] = access_token
+        if tool_name == "tc_get_org_id":
+            # Only inject access_token
+            arguments["access_token"] = access_token
+            logger.info("Special handling for tc_get_org_id - no orgId injection")
+        else:
+            # For ALL other tools: inject access_token, expect orgId from ChatGPT
+            arguments["access_token"] = access_token
+            
+            # Verify ChatGPT provided orgId
+            if "orgId" not in arguments:
+                logger.warning(f"⚠️ Tool {tool_name} called without orgId!")
+                logger.warning("ChatGPT should call tc_get_org_id first and pass orgId")
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        "content": [{
+                            "type": "text",
+                            "text": "Error: orgId is required. Please call tc_get_org_id() first to get your organization ID, then pass it to this tool."
+                        }],
+                        "isError": True
+                    }
+                }
         
-        logger.info(f"Args after injection: {arguments}")
+        logger.info(f"Final args: {arguments}")
         
+        # Call the tool
         try:
             if tool_name not in TOOL_REGISTRY:
+                logger.error(f"Tool not found: {tool_name}")
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
@@ -333,7 +576,6 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             
         except TypeError as e:
             logger.error(f"❌ TypeError: {str(e)}")
-            logger.error(f"Function signature mismatch for {tool_name}")
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -343,7 +585,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 }
             }
         except Exception as e:
-            logger.error(f"❌ Error executing {tool_name}: {str(e)}", exc_info=True)
+            logger.error(f"❌ Error: {str(e)}", exc_info=True)
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -363,12 +605,56 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
 
 @app.get("/")
 async def root():
+    """Root endpoint with instructions for ChatGPT"""
     return {
         "name": "TrainerCentral MCP Server",
         "version": "1.0.0",
         "protocol": "mcp",
         "tools_count": len(TOOL_REGISTRY),
-        "tools": list(TOOL_REGISTRY.keys())
+        "tools": list(TOOL_REGISTRY.keys()),
+        
+        "instructions": """
+CRITICAL WORKFLOW FOR ALL CONVERSATIONS:
+
+1. START EVERY CONVERSATION:
+   - First action: Call tc_get_org_id() to get user's organization(s)
+   - Response: {default_org_id: "...", portals: [...], total_portals: N}
+
+2. IF USER HAS MULTIPLE ORGANIZATIONS (total_portals > 1):
+   - Show user the list: "I found 2 organizations: 1) Test (60058756004), 2) Secondary (60061345029)"
+   - Ask: "Which organization would you like to use?"
+   - Wait for user response
+   - Store their chosen orgId
+
+3. IF USER HAS SINGLE ORGANIZATION (total_portals = 1):
+   - Automatically use the default_org_id
+   - Store it in conversation context
+   - Proceed with user's request without asking
+
+4. FOR ALL SUBSEQUENT TOOL CALLS:
+   - ALWAYS pass the stored orgId as a parameter
+   - Example: tc_create_course(orgId="60058756004", course_data={...})
+   - Example: tc_list_courses(orgId="60058756004")
+
+5. MEMORY - CRITICAL:
+   - Store orgId in conversation context for the ENTIRE chat session
+   - DO NOT call tc_get_org_id() on every request
+   - Only call it again if user wants to switch organizations
+
+EXAMPLE CONVERSATION:
+User: "Create a Python course"
+→ Step 1: Call tc_get_org_id()
+→ Step 2: Get {total_portals: 1, default_org_id: "60058756004"}
+→ Step 3: Store orgId = "60058756004"
+→ Step 4: Call tc_create_course(orgId="60058756004", course_data={...})
+
+User (later): "List my courses"
+→ Use stored orgId: "60058756004"
+→ Call tc_list_courses(orgId="60058756004")
+→ DO NOT call tc_get_org_id() again
+
+IMPORTANT: Call tc_get_org_id() ONCE per conversation, not on every tool call.
+        """
     }
 
 
