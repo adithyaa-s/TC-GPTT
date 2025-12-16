@@ -157,7 +157,16 @@ async def health():
     }
 
 
-# Main MCP endpoint - handles all tool calls
+@app.post("/mcp")
+@app.post("/mcp/")
+async def mcp_handler_alias(request: Request, authorization: Optional[str] = Header(None)):
+    """
+    Alias for ChatGPT custom connectors that expect /mcp/ path
+    """
+    return await mcp_handler(request, authorization)
+
+
+
 @app.post("/")
 async def mcp_handler(request: Request, authorization: Optional[str] = Header(None)):
     """
