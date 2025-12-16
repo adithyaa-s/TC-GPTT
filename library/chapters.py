@@ -14,10 +14,8 @@ class TrainerCentralChapters:
     """
 
     def __init__(self):
-        # self.ORG_ID = os.getenv("ORG_ID")
-        self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4"
-        # self.oauth = ZohoOAuth()
+        tc_api = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
+        self.base_url = f"{tc_api}/api/v4"
 
     def create_chapter(self, section_data: dict, orgId: str, access_token: str):
         """

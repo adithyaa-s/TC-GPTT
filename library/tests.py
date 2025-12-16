@@ -21,10 +21,8 @@ class TrainerCentralTests:
     """
 
     def __init__(self):
-        self.ORG_ID = os.getenv("ORG_ID")
-        self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4/{self.ORG_ID}"
-        self.oauth = ZohoOAuth()
+        tc_api = os.getenv("TC_API_BASE_URL")
+        self.base_url = f"{tc_api}/api/v4"
 
     def create_test_form(self, session_id: str, name: str, description_html: str) -> dict:
         """

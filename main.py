@@ -58,7 +58,7 @@ def add_oauth_endpoints(mcp_instance):
     )
     
     # Configuration
-    DOMAIN = os.getenv("DOMAIN", "https://tc-cgpt.onrender.com")
+    DOMAIN = os.getenv("DOMAIN", "https://tc-gptt.onrender.com")
     AUTH_SERVER = "https://accounts.zoho.in"
     
     # OAuth Protected Resource Metadata

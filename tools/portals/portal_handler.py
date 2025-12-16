@@ -28,14 +28,14 @@ def tc_get_org_id(access_token: str) -> dict:
     """
     portals_data = get_user_portals(access_token)
 
-    default_org_id = extract_default_org_id(portals_data)
+    # default_org_id = extract_default_org_id(portals_data)
     all_org_ids = extract_all_org_ids(portals_data)
 
     portals = portals_data.get("portals", [])
 
     return {
         "portals": portals,
-        "default_org_id": default_org_id,
+        # "default_org_id": default_org_id,
         "all_org_ids": all_org_ids,
         "total_portals": len(portals),
     }

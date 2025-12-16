@@ -1,15 +1,11 @@
-# library/assignments.py
 import os
 import requests
-from .oauth import ZohoOAuth
 from .common_utils import TrainerCentralCommon  
 
 class TrainerCentralAssignments:
     def __init__(self):
-        self.ORG_ID = os.getenv("ORG_ID")
-        self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4/{self.ORG_ID}"
-        self.oauth = ZohoOAuth()
+        tc_api = os.getenv("TC_API_BASE_URL")
+        self.base_url = f"{tc_api}/api/v4"
         self.common = TrainerCentralCommon()
 
     def create_assignment(self, assignment_data: dict) -> dict:

@@ -48,8 +48,27 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TrainerCentral MCP Server")
 
-DOMAIN = "https://tc-gptt.onrender.com"
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://tc-gptt.onrender.com")
+TC_API_BASE_URL = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
 AUTH_SERVER = "https://accounts.zoho.in"
+
+@app.get("/.well-known/oauth-protected-resource")
+async def oauth_metadata():
+    return {
+        "resource": MCP_SERVER_URL,
+        "authorization_servers": [AUTH_SERVER],
+        "scopes_supported": [...],
+        "resource_documentation": f"{MCP_SERVER_URL}/docs"
+    }
+
+# And in tools/call error responses:
+"_meta": {
+    "mcp/www_authenticate": [
+        f'Bearer resource_metadata="{MCP_SERVER_URL}/.well-known/oauth-protected-resource"'
+    ]
+}
+
+
 
 app.add_middleware(
     CORSMiddleware,

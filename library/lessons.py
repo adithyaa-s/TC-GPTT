@@ -4,8 +4,8 @@ from .common_utils import TrainerCentralCommon
 
 class TrainerCentralLessons:
     def __init__(self):
-        self.DOMAIN = os.getenv("DOMAIN")
-        self.base_url = f"{self.DOMAIN}/api/v4"
+        tc_api = os.getenv("TC_API_BASE_URL")
+        self.base_url = f"{tc_api}/api/v4"
         self.common = TrainerCentralCommon()
 
     def create_lesson_with_content(
