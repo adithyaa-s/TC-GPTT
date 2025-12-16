@@ -116,7 +116,7 @@ def tc_get_course_lessons(courseId: str, orgId: str, access_token: str) -> dict:
         - Provide orgId from tc_get_org_id() tool
         - OAuth scope required: TrainerCentral.sessionapi.READ
     """
-    return lessons.get_course_lessons(courseId, orgId, access_token)
+    return tc_lessons.get_course_lessons(courseId, orgId, access_token)
 
 
 #@mcp.tool()
