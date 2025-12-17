@@ -840,12 +840,41 @@
  * Logs are intentionally minimal and safe for production MCP widgets.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState, useMemo } from "react";
 import { createRoot } from "react-dom/client";
+import { useSyncExternalStore } from "react";
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
+// Hook to subscribe to `window.openai` globals
+// as described in the official Apps SDK docs
+// ----------------------------------------------
+
+const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+
+function useOpenAiGlobal(key) {
+  return useSyncExternalStore(
+    (onChange) => {
+      const handler = (event) => {
+        const value = event.detail.globals?.[key];
+        if (value !== undefined) {
+          onChange();
+        }
+      };
+      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
+        passive: true,
+      });
+      return () => {
+        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+      };
+    },
+    () => window.openai?.[key],
+    () => window.openai?.[key]
+  );
+}
+
+// ----------------------------------------------
 // Types
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 
 type ViewMode = "grid" | "list";
 type SortBy = "created" | "name" | "enrolled";
@@ -883,27 +912,11 @@ interface WidgetState {
   searchQuery: string;
 }
 
-// -----------------------------------------------------------------------------
-// ChatGPT Widget globals
-// -----------------------------------------------------------------------------
-
-declare global {
-  interface Window {
-    openai?: {
-      toolOutput?: any;
-      toolResponseMetadata?: any;
-      widgetState?: WidgetState;
-      setWidgetState?: (s: WidgetState) => void;
-      sendFollowUpMessage?: (args: { prompt: string }) => Promise<void>;
-    };
-  }
-}
-
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 // Helpers
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 
-function log(level: "info" | "warn" | "error", message: string, data?: any) {
+function log(level, message, data) {
   const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
   if (data !== undefined) {
     console[level === "error" ? "error" : "log"](prefix, message, data);
@@ -927,21 +940,20 @@ function normalizeCourse(raw: RawCourse): Course {
   };
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 // Main Widget
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 
 function CoursesWidget() {
   log("info", "Widget mounting");
-    useEffect(() => {
-  console.log("🏷 toolOutput:", window.openai?.toolOutput);
-  console.log("🏷 toolResponseMetadata:", window.openai?.toolResponseMetadata);
-}, []);
 
-  // ---------------------------------------------------------------------------
-  // Widget UI state
-  // ---------------------------------------------------------------------------
+  // --- Subscribe to MCP data via hooks ---
+  const toolOutput = useOpenAiGlobal("toolOutput");
+  const metadata = useOpenAiGlobal("toolResponseMetadata");
 
+  log("info", "Received toolOutput snapshot", toolOutput);
+
+  // --- Widget UI state (persistent) ---
   const [state, setState] = useState<WidgetState>(
     window.openai?.widgetState ?? {
       viewMode: "grid",
@@ -957,55 +969,11 @@ function CoursesWidget() {
     window.openai?.setWidgetState?.(next);
   };
 
-  // ---------------------------------------------------------------------------
-  // Get toolOutput when ChatGPT sets it
-  // ---------------------------------------------------------------------------
-
-  const [toolData, setToolData] = useState<{
-    toolOutput?: any;
-    metadata?: any;
-  }>({});
-
-  useEffect(() => {
-    if (
-      window.openai?.toolOutput !== undefined ||
-      window.openai?.toolResponseMetadata !== undefined
-    ) {
-      log("info", "Tool data updated");
-      setToolData({
-        toolOutput: window.openai?.toolOutput,
-        metadata: window.openai?.toolResponseMetadata,
-      });
-    }
-  }, [
-    window.openai?.toolOutput,
-    window.openai?.toolResponseMetadata,
-  ]);
-
-  const toolOutput = toolData.toolOutput;
-  const metadata = toolData.metadata;
-
-  // ---------------------------------------------------------------------------
-  // Data extraction
-  // ---------------------------------------------------------------------------
-
+  // --- Data extraction: read courses from top-level `toolOutput.courses` ---
   let rawCourses: RawCourse[] = [];
 
-  try {
-    if (Array.isArray(metadata?.courses)) {
-      rawCourses = metadata.courses;
-    } else if (Array.isArray(toolOutput?.courses)) {
-      rawCourses = toolOutput.courses;
-    } else if (Array.isArray(toolOutput?.result?.courses)) {
-      rawCourses = toolOutput.result.courses;
-    } else if (Array.isArray(toolOutput?.data?.courses)) {
-      rawCourses = toolOutput.data.courses;
-    } else if (Array.isArray(toolOutput)) {
-      rawCourses = toolOutput;
-    }
-  } catch (err) {
-    log("error", "Failed while extracting courses", err);
-    rawCourses = [];
+  if (Array.isArray(toolOutput?.courses)) {
+    rawCourses = toolOutput.courses;
   }
 
   log("info", `Raw courses received: ${rawCourses.length}`);
@@ -1023,10 +991,7 @@ function CoursesWidget() {
     return normalized;
   }, [rawCourses]);
 
-  // ---------------------------------------------------------------------------
-  // Filtering / sorting
-  // ---------------------------------------------------------------------------
-
+  // --- Filtering / sorting logic ---
   const filteredCourses = useMemo(() => {
     let list = [...courses];
 
@@ -1037,7 +1002,9 @@ function CoursesWidget() {
 
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
-      list = list.filter((c) => c.courseName.toLowerCase().includes(q));
+      list = list.filter((c) =>
+        c.courseName.toLowerCase().includes(q)
+      );
     }
 
     list.sort((a, b) => {
@@ -1051,18 +1018,14 @@ function CoursesWidget() {
     return list;
   }, [courses, state]);
 
-  // ---------------------------------------------------------------------------
-  // Empty & loading states
-  // ---------------------------------------------------------------------------
-
   log("info", "Render phase start");
 
-  // Not yet received results
+  // --- Loading / empty states ---
   if (toolOutput === undefined && metadata === undefined) {
     return <div style={styles.loading}>Loading courses…</div>;
   }
 
-  if (courses.length === 0) {
+  if (filteredCourses.length === 0) {
     return (
       <div style={styles.empty}>
         <h3>No courses found</h3>
@@ -1079,10 +1042,7 @@ function CoursesWidget() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Render UI
-  // ---------------------------------------------------------------------------
-
+  // --- Final render ---
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -1163,9 +1123,9 @@ function CoursesWidget() {
   );
 }
 
-// -----------------------------------------------------------------------------
-// Course Card
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
+// CourseCard component
+// ----------------------------------------------
 
 function CourseCard({
   course,
@@ -1205,9 +1165,9 @@ function CourseCard({
   );
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 // Styles
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 
 const gradients = [
   "linear-gradient(135deg,#ffecd2,#fcb69f)",
@@ -1249,9 +1209,9 @@ const styles: Record<string, React.CSSProperties> = {
   empty: { padding: 40, textAlign: "center" },
 };
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 // Mount
-// -----------------------------------------------------------------------------
+// ----------------------------------------------
 
 const root = document.getElementById("root");
 if (root) createRoot(root).render(<CoursesWidget />);

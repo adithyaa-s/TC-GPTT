@@ -1095,7 +1095,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useRef(initialValue);
         }
-        function useEffect2(create, deps) {
+        function useEffect(create, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useEffect(create, deps);
         }
@@ -1137,7 +1137,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useId();
         }
-        function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
+        function useSyncExternalStore2(subscribe, getSnapshot, getServerSnapshot) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
         }
@@ -1878,7 +1878,7 @@ var require_react_development = __commonJS({
         exports.useContext = useContext;
         exports.useDebugValue = useDebugValue;
         exports.useDeferredValue = useDeferredValue;
-        exports.useEffect = useEffect2;
+        exports.useEffect = useEffect;
         exports.useId = useId;
         exports.useImperativeHandle = useImperativeHandle;
         exports.useInsertionEffect = useInsertionEffect;
@@ -1887,7 +1887,7 @@ var require_react_development = __commonJS({
         exports.useReducer = useReducer;
         exports.useRef = useRef;
         exports.useState = useState2;
-        exports.useSyncExternalStore = useSyncExternalStore;
+        exports.useSyncExternalStore = useSyncExternalStore2;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop === "function") {
@@ -24459,7 +24459,29 @@ var require_jsx_runtime = __commonJS({
 // src/CoursesWidget.tsx
 var import_react = __toESM(require_react());
 var import_client = __toESM(require_client());
+var import_react2 = __toESM(require_react());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
+var SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+function useOpenAiGlobal(key) {
+  return (0, import_react2.useSyncExternalStore)(
+    (onChange) => {
+      const handler = (event) => {
+        const value = event.detail.globals?.[key];
+        if (value !== void 0) {
+          onChange();
+        }
+      };
+      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
+        passive: true
+      });
+      return () => {
+        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+      };
+    },
+    () => window.openai?.[key],
+    () => window.openai?.[key]
+  );
+}
 function log(level, message, data) {
   const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
   if (data !== void 0) {
@@ -24481,10 +24503,9 @@ function normalizeCourse(raw) {
 }
 function CoursesWidget() {
   log("info", "Widget mounting");
-  (0, import_react.useEffect)(() => {
-    console.log("\u{1F3F7} toolOutput:", window.openai?.toolOutput);
-    console.log("\u{1F3F7} toolResponseMetadata:", window.openai?.toolResponseMetadata);
-  }, []);
+  const toolOutput = useOpenAiGlobal("toolOutput");
+  const metadata = useOpenAiGlobal("toolResponseMetadata");
+  log("info", "Received toolOutput snapshot", toolOutput);
   const [state, setState] = (0, import_react.useState)(
     window.openai?.widgetState ?? {
       viewMode: "grid",
@@ -24498,37 +24519,9 @@ function CoursesWidget() {
     setState(next);
     window.openai?.setWidgetState?.(next);
   };
-  const [toolData, setToolData] = (0, import_react.useState)({});
-  (0, import_react.useEffect)(() => {
-    if (window.openai?.toolOutput !== void 0 || window.openai?.toolResponseMetadata !== void 0) {
-      log("info", "Tool data updated");
-      setToolData({
-        toolOutput: window.openai?.toolOutput,
-        metadata: window.openai?.toolResponseMetadata
-      });
-    }
-  }, [
-    window.openai?.toolOutput,
-    window.openai?.toolResponseMetadata
-  ]);
-  const toolOutput = toolData.toolOutput;
-  const metadata = toolData.metadata;
   let rawCourses = [];
-  try {
-    if (Array.isArray(metadata?.courses)) {
-      rawCourses = metadata.courses;
-    } else if (Array.isArray(toolOutput?.courses)) {
-      rawCourses = toolOutput.courses;
-    } else if (Array.isArray(toolOutput?.result?.courses)) {
-      rawCourses = toolOutput.result.courses;
-    } else if (Array.isArray(toolOutput?.data?.courses)) {
-      rawCourses = toolOutput.data.courses;
-    } else if (Array.isArray(toolOutput)) {
-      rawCourses = toolOutput;
-    }
-  } catch (err) {
-    log("error", "Failed while extracting courses", err);
-    rawCourses = [];
+  if (Array.isArray(toolOutput?.courses)) {
+    rawCourses = toolOutput.courses;
   }
   log("info", `Raw courses received: ${rawCourses.length}`);
   const courses = (0, import_react.useMemo)(() => {
@@ -24551,7 +24544,9 @@ function CoursesWidget() {
       list = list.filter((c) => c.publishStatus !== "PUBLISHED");
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
-      list = list.filter((c) => c.courseName.toLowerCase().includes(q));
+      list = list.filter(
+        (c) => c.courseName.toLowerCase().includes(q)
+      );
     }
     list.sort((a, b) => {
       if (state.sortBy === "name")
@@ -24566,7 +24561,7 @@ function CoursesWidget() {
   if (toolOutput === void 0 && metadata === void 0) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.loading, children: "Loading courses\u2026" });
   }
-  if (courses.length === 0) {
+  if (filteredCourses.length === 0) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.empty, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "No courses found" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
