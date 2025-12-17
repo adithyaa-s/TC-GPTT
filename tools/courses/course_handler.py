@@ -120,7 +120,7 @@ def tc_get_course(courseId: str, orgId: str, access_token: str) -> dict:
     return tc.get_course(courseId, orgId, access_token)
 
 
-#@mcp.tool()
+# #@mcp.tool()
 def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = None) -> dict:
     """
     List all courses (or a paginated subset).
@@ -147,6 +147,75 @@ def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = 
             - meta { totalCourseCount }
     """
     return tc.list_courses(orgId, access_token)
+
+
+def tc_list_courses_with_widget(orgId: str, access_token: str, limit: int = None, si: int = None) -> dict:
+    """
+    List courses WITH interactive ChatGPT widget UI.
+    
+    Returns data in the official MCP widget format:
+    - structuredContent: Concise summary the MODEL reads
+    - content: Optional narration for the model
+    - _meta: Rich data ONLY for widget (never sent to model)
+    """
+    
+    # Fetch courses from TrainerCentral API
+    courses_response = tc.list_courses(orgId, access_token)
+    
+    courses = courses_response.get("courses", [])
+    categories = courses_response.get("courseCategories", [])
+    meta = courses_response.get("meta", {})
+    total = meta.get("totalCourseCount", len(courses))
+    
+    # Count by status
+    draft_count = sum(1 for c in courses if c.get("publishStatus") in ["DRAFT", "NONE"])
+    published_count = sum(1 for c in courses if c.get("publishStatus") == "PUBLISHED")
+    
+    return {
+        # STRUCTURED CONTENT: Concise data the MODEL reads
+        "structuredContent": {
+            "summary": f"Found {total} courses ({published_count} published, {draft_count} draft)",
+            "courses": [
+                {
+                    "id": c.get("courseId"),
+                    "name": c.get("courseName"),
+                    "status": c.get("publishStatus"),
+                    "enrolled": c.get("enrolledCount", 0)
+                }
+                for c in courses[:5]  # Only show first 5 to model
+            ]
+        },
+        
+        # CONTENT: Natural language narration for model
+        "content": [
+            {
+                "type": "text",
+                "text": f"You have {total} courses. Use the interactive widget below to browse, filter by status, sort, and manage your courses."
+            }
+        ],
+        
+        # META: Full data ONLY for widget (model never sees this!)
+        "_meta": {
+            # Point to the widget template URI
+            "openai/outputTemplate": "ui://widget/courses.html",
+            
+            # Full courses data for the widget
+            "courses": courses,
+            "courseCategories": categories,
+            "totalCourseCount": total,
+            "stats": {
+                "total": total,
+                "published": published_count,
+                "draft": draft_count
+            }
+        }
+    }
+
+
+# # Plain version without widget
+# def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = None) -> dict:
+#     """List courses without widget UI (plain data only)."""
+#     return tc.list_courses(orgId, access_token)
 
 
 #@mcp.tool()

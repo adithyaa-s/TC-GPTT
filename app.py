@@ -4,8 +4,9 @@ Fixed domain configuration and proper orgId handling
 """
 
 import os
-from fastapi import FastAPI, Request, Header
+from fastapi import FastAPI, Request, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, HTMLResponse
 from typing import Optional
 import json
 import logging
@@ -14,6 +15,7 @@ from tools.portals.portal_handler import tc_get_org_id
 from tools.courses.course_handler import (
     tc_create_course,
     tc_get_course,
+    tc_list_courses_with_widget,
     tc_list_courses,
     tc_update_course,
     tc_delete_course
@@ -68,6 +70,7 @@ TOOL_REGISTRY = {
     "tc_get_org_id": tc_get_org_id,
     "tc_create_course": tc_create_course,
     "tc_get_course": tc_get_course,
+    "tc_list_courses_with_widget": tc_list_courses_with_widget,
     "tc_list_courses": tc_list_courses,
     "tc_update_course": tc_update_course,
     "tc_delete_course": tc_delete_course,
@@ -92,6 +95,68 @@ TOOL_REGISTRY = {
 
 logger.info(f"Registered {len(TOOL_REGISTRY)} tools")
 
+
+@app.get("/mcp/resource/courses-widget.html")
+async def courses_widget_resource():
+    """
+    MCP Resource: Courses Widget Template
+    
+    This serves the widget HTML with mimeType: text/html+skybridge
+    which tells ChatGPT to treat it as a sandboxed widget
+    """
+    
+    # Read bundled widget JS
+    widget_js_path = os.path.join(os.path.dirname(__file__), 'web/dist/courses-widget.js')
+    
+    try:
+        with open(widget_js_path, 'r', encoding='utf-8') as f:
+            widget_js = f.read()
+    except FileNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Widget not built. Run: cd web && npm run build"}
+        )
+    
+    # Build the HTML template
+    html_template = f'''<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            * {{
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                background: #f8f9fa;
+            }}
+            #root {{
+                width: 100%;
+                min-height: 100vh;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module">
+    {widget_js}
+        </script>
+    </body>
+    </html>'''
+    
+    # Return as text/html+skybridge (required for MCP widgets!)
+    return Response(
+        content=html_template,
+        media_type="text/html+skybridge",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 @app.get("/.well-known/oauth-protected-resource")
 async def oauth_metadata():
@@ -182,6 +247,90 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             }
         }
     
+    elif method == "resources/list":
+    # MCP protocol: List available resources (widget templates)
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {
+                "resources": [
+                    {
+                        "uri": "ui://widget/courses.html",
+                        "name": "Courses Widget",
+                        "description": "Interactive courses grid with filters and sorting",
+                        "mimeType": "text/html+skybridge"
+                    }
+                ]
+            }
+        }
+
+    elif method == "resources/read":
+        # MCP protocol: Read a specific resource
+        resource_uri = params.get("uri")
+        
+        if resource_uri == "ui://widget/courses.html":
+            # Read the widget content
+            widget_js_path = os.path.join(os.path.dirname(__file__), 'web/dist/courses-widget.js')
+            
+            try:
+                with open(widget_js_path, 'r', encoding='utf-8') as f:
+                    widget_js = f.read()
+            except FileNotFoundError:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {"code": -32002, "message": "Widget not built"}
+                }
+            
+            html_template = f'''<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+                    body {{ 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        background: #f8f9fa;
+                    }}
+                    #root {{ width: 100%; min-height: 100vh; }}
+                </style>
+            </head>
+            <body>
+                <div id="root"></div>
+                <script type="module">{widget_js}</script>
+            </body>
+            </html>'''
+            
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "contents": [
+                        {
+                            "uri": "ui://widget/courses.html",
+                            "mimeType": "text/html+skybridge",
+                            "text": html_template,
+                            "_meta": {
+                                "openai/widgetPrefersBorder": True,
+                                "openai/widgetDomain": MCP_SERVER_URL,
+                                "openai/widgetCSP": {
+                                    "connect_domains": [TC_API_BASE_URL, MCP_SERVER_URL],
+                                    "resource_domains": ["https://*.oaistatic.com"]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        else:
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {"code": -32002, "message": f"Resource not found: {resource_uri}"}
+            }
+
+
     elif method == "tools/list":
         tools_list = [
             {
@@ -214,16 +363,25 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 }
             },
             {
-                "name": "tc_list_courses",
-                "description": "List courses. Requires orgId.",
+                "name": "tc_list_courses_with_widget",
+                "description": "List all courses with an interactive widget UI. Shows courses in a grid with filters, sorting, and management options.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "orgId": {"type": "string"},
-                        "limit": {"type": "integer"},
-                        "si": {"type": "integer"}
+                        "orgId": {
+                            "type": "string",
+                            "description": "Organization ID from tc_get_org_id"
+                        }
                     },
                     "required": ["orgId"]
+                },
+                "_meta": {
+                    "openai/outputTemplate": "ui://widget/courses.html",
+                    "openai/widgetAccessible": True, 
+                    "openai/toolInvocation": {
+                        "invoking": "Loading your courses...",
+                        "invoked": "Courses loaded successfully"
+                    }
                 }
             },
             {
