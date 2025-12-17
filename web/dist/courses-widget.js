@@ -24464,38 +24464,44 @@ function CoursesWidget() {
   const [courses, setCourses] = (0, import_react.useState)([]);
   (0, import_react.useEffect)(() => {
     const output = window.openai?.toolOutput;
-    if (output?.courses) {
+    console.log("Widget received toolOutput:", output);
+    if (output?.courses && Array.isArray(output.courses)) {
       setCourses(output.courses);
+    } else {
+      const sc = output?.structuredContent;
+      if (sc?.courses && Array.isArray(sc.courses)) {
+        setCourses(sc.courses);
+      }
     }
   }, []);
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: 16 }, children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "16px", fontFamily: "system-ui" }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h2", { children: [
       "Courses (",
       courses.length,
       ")"
     ] }),
-    courses.map((c) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    courses.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No courses detected \u2014 check console for toolOutput" }),
+    courses.map((course) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
       "div",
       {
         style: {
-          padding: 12,
-          marginBottom: 8,
-          borderRadius: 8,
-          background: "#fff",
+          marginBottom: "8px",
+          padding: "12px",
+          background: "white",
+          borderRadius: "8px",
           boxShadow: "0 1px 4px rgba(0,0,0,.1)"
         },
-        children: c.name
+        children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: course.name })
       },
-      c.id
+      course.id
     ))
   ] });
 }
 var root = document.getElementById("root");
 if (root)
   (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));
-var CoursesWidget_default = CoursesWidget;
 export {
-  CoursesWidget_default as default
+  CoursesWidget as default
 };
 /*! Bundled license information:
 

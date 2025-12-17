@@ -1290,49 +1290,57 @@
 
 // V3
 
-// src/CoursesWidget.tsx
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-
-type Course = {
-  id: string;
-  name: string;
-};
 
 declare global {
   interface Window {
     openai?: {
       toolOutput?: any;
+      toolResponseMetadata?: any;
     };
   }
 }
 
-function CoursesWidget() {
-  const [courses, setCourses] = useState<Course[]>([]);
+export default function CoursesWidget() {
+  const [courses, setCourses] = useState<any[]>([]);
 
   useEffect(() => {
+    // Read the global from ChatGPT
     const output = window.openai?.toolOutput;
-    if (output?.courses) {
+    console.log("Widget received toolOutput:", output);
+
+    if (output?.courses && Array.isArray(output.courses)) {
       setCourses(output.courses);
+    } else {
+      // Also check nested structuredContent if needed
+      const sc = output?.structuredContent;
+      if (sc?.courses && Array.isArray(sc.courses)) {
+        setCourses(sc.courses);
+      }
     }
   }, []);
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: "16px", fontFamily: "system-ui" }}>
       <h2>Courses ({courses.length})</h2>
 
-      {courses.map((c) => (
+      {courses.length === 0 && (
+        <p>No courses detected — check console for toolOutput</p>
+      )}
+
+      {courses.map((course: any) => (
         <div
-          key={c.id}
+          key={course.id}
           style={{
-            padding: 12,
-            marginBottom: 8,
-            borderRadius: 8,
-            background: "#fff",
+            marginBottom: "8px",
+            padding: "12px",
+            background: "white",
+            borderRadius: "8px",
             boxShadow: "0 1px 4px rgba(0,0,0,.1)",
           }}
         >
-          {c.name}
+          <strong>{course.name}</strong>
         </div>
       ))}
     </div>
@@ -1341,5 +1349,3 @@ function CoursesWidget() {
 
 const root = document.getElementById("root");
 if (root) createRoot(root).render(<CoursesWidget />);
-
-export default CoursesWidget;
