@@ -6345,14 +6345,14 @@ var require_react_dom_development = __commonJS({
           16
         );
         var clz32 = Math.clz32 ? Math.clz32 : clz32Fallback;
-        var log = Math.log;
+        var log2 = Math.log;
         var LN2 = Math.LN2;
         function clz32Fallback(x) {
           var asUint = x >>> 0;
           if (asUint === 0) {
             return 32;
           }
-          return 31 - (log(asUint) / LN2 | 0) | 0;
+          return 31 - (log2(asUint) / LN2 | 0) | 0;
         }
         var TotalLanes = 31;
         var NoLanes = (
@@ -24460,10 +24460,65 @@ var require_jsx_runtime = __commonJS({
 var import_react = __toESM(require_react());
 var import_client = __toESM(require_client());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
+function log(category, message, data) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const logMessage = `[${timestamp}] [${category}] ${message}`;
+  console.log(logMessage);
+  if (data !== void 0) {
+    console.log("Data:", data);
+  }
+  const debugDiv = document.getElementById("debug-log");
+  if (debugDiv) {
+    const entry = document.createElement("div");
+    entry.style.fontSize = "11px";
+    entry.style.padding = "4px";
+    entry.style.borderBottom = "1px solid #eee";
+    entry.style.fontFamily = "monospace";
+    entry.textContent = logMessage;
+    debugDiv.appendChild(entry);
+    debugDiv.scrollTop = debugDiv.scrollHeight;
+  }
+}
 function CoursesWidget() {
+  log("INIT", "Widget component mounting");
+  const [debugMode, setDebugMode] = (0, import_react.useState)(true);
+  const [renderKey, setRenderKey] = (0, import_react.useState)(0);
+  (0, import_react.useEffect)(() => {
+    log("CHECK", "Checking window.openai...", {
+      exists: !!window.openai,
+      keys: window.openai ? Object.keys(window.openai) : []
+    });
+    if (window.openai) {
+      log("OPENAI", "window.openai contents:", {
+        toolOutput: window.openai.toolOutput,
+        toolResponseMetadata: window.openai.toolResponseMetadata,
+        toolInput: window.openai.toolInput,
+        widgetState: window.openai.widgetState,
+        hasSetWidgetState: !!window.openai.setWidgetState,
+        hasSendFollowUp: !!window.openai.sendFollowUpMessage,
+        hasCallTool: !!window.openai.callTool
+      });
+    } else {
+      log("ERROR", "window.openai is NOT available!");
+    }
+    const interval = setInterval(() => {
+      if (window.openai && !metadata) {
+        log("POLL", "window.openai became available, re-rendering");
+        setRenderKey((prev) => prev + 1);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
   const toolOutput = window.openai?.toolOutput;
   const metadata = window.openai?.toolResponseMetadata;
   const savedState = window.openai?.widgetState;
+  log("DATA", "Current data state", {
+    hasToolOutput: !!toolOutput,
+    hasMetadata: !!metadata,
+    hasSavedState: !!savedState,
+    toolOutputKeys: toolOutput ? Object.keys(toolOutput) : [],
+    metadataKeys: metadata ? Object.keys(metadata) : []
+  });
   const [widgetState, setLocalWidgetState] = (0, import_react.useState)(
     savedState || {
       viewMode: "grid",
@@ -24473,13 +24528,53 @@ function CoursesWidget() {
     }
   );
   const updateWidgetState = (updates) => {
+    log("STATE", "Updating widget state", updates);
     const newState = { ...widgetState, ...updates };
     setLocalWidgetState(newState);
-    window.openai?.setWidgetState?.(newState);
+    if (window.openai?.setWidgetState) {
+      window.openai.setWidgetState(newState);
+      log("STATE", "Called window.openai.setWidgetState");
+    } else {
+      log("WARN", "window.openai.setWidgetState not available");
+    }
   };
-  const courses = metadata?.courses || [];
-  const stats = metadata?.stats || { total: 0, published: 0, draft: 0 };
+  let courses = [];
+  let totalCount = 0;
+  let stats = { total: 0, published: 0, draft: 0 };
+  if (metadata) {
+    log("PARSE", "Parsing metadata", metadata);
+    if (metadata.courses) {
+      courses = metadata.courses;
+      log("PARSE", `Found ${courses.length} courses in metadata.courses`);
+    } else if (Array.isArray(metadata)) {
+      courses = metadata;
+      log("PARSE", `metadata is array with ${courses.length} items`);
+    }
+    totalCount = metadata.totalCourseCount || metadata.total || courses.length;
+    stats = metadata.stats || {
+      total: totalCount,
+      published: courses.filter((c) => c.publishStatus === "PUBLISHED").length,
+      draft: courses.filter((c) => c.publishStatus !== "PUBLISHED").length
+    };
+  } else if (toolOutput) {
+    log("PARSE", "Trying to parse from toolOutput", toolOutput);
+    if (toolOutput.courses) {
+      courses = toolOutput.courses;
+      log("PARSE", `Found ${courses.length} courses in toolOutput.courses`);
+    }
+  }
+  log("FINAL", "Final parsed data", {
+    courseCount: courses.length,
+    totalCount,
+    stats
+  });
   const filteredCourses = (0, import_react.useMemo)(() => {
+    log("FILTER", "Filtering courses", {
+      totalCourses: courses.length,
+      filterBy: widgetState.filterBy,
+      searchQuery: widgetState.searchQuery,
+      sortBy: widgetState.sortBy
+    });
     let filtered = courses;
     if (widgetState.filterBy === "draft") {
       filtered = filtered.filter(
@@ -24505,30 +24600,105 @@ function CoursesWidget() {
           return (Number(b.createdTime) || 0) - (Number(a.createdTime) || 0);
       }
     });
+    log("FILTER", `Filtered to ${sorted.length} courses`);
     return sorted;
   }, [courses, widgetState]);
   const handleCourseClick = async (course) => {
-    await window.openai?.sendFollowUpMessage?.({
-      prompt: `Show me details for the course "${course.courseName}" (ID: ${course.courseId})`
-    });
+    log("ACTION", "Course clicked", { courseId: course.courseId, name: course.courseName });
+    if (window.openai?.sendFollowUpMessage) {
+      try {
+        await window.openai.sendFollowUpMessage({
+          prompt: `Show me details for the course "${course.courseName}" (ID: ${course.courseId})`
+        });
+        log("ACTION", "Follow-up message sent successfully");
+      } catch (err) {
+        log("ERROR", "Failed to send follow-up", err);
+      }
+    } else {
+      log("WARN", "window.openai.sendFollowUpMessage not available");
+    }
   };
   const handleCreateCourse = async () => {
-    await window.openai?.sendFollowUpMessage?.({
-      prompt: "I want to create a new course"
-    });
+    log("ACTION", "Create course clicked");
+    if (window.openai?.sendFollowUpMessage) {
+      try {
+        await window.openai.sendFollowUpMessage({
+          prompt: "I want to create a new course"
+        });
+        log("ACTION", "Create course message sent");
+      } catch (err) {
+        log("ERROR", "Failed to send create message", err);
+      }
+    }
   };
-  const handleRefresh = async () => {
-    await window.openai?.callTool?.("tc_list_courses_with_widget", {
-      orgId: metadata?.orgId
-    });
-  };
-  if (!metadata || !courses.length) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.loading, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.spinner }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: styles.loadingText, children: "Loading courses..." })
+  const shouldShowLoading = !metadata && !toolOutput;
+  const hasNoData = courses.length === 0;
+  log("RENDER", "Render decision", {
+    shouldShowLoading,
+    hasNoData,
+    hasCourses: courses.length > 0
+  });
+  if (shouldShowLoading) {
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.container, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.loading, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.spinner }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: styles.loadingText, children: "Loading courses..." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+          "button",
+          {
+            onClick: () => setDebugMode(!debugMode),
+            style: styles.debugToggle,
+            children: [
+              debugMode ? "Hide" : "Show",
+              " Debug"
+            ]
+          }
+        )
+      ] }),
+      debugMode && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.debugPanel, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: styles.debugTitle, children: "Debug Info" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { id: "debug-log", style: styles.debugLog }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => {
+          document.getElementById("debug-log").innerHTML = "";
+          log("DEBUG", "Log cleared");
+        }, style: styles.clearButton, children: "Clear Log" })
+      ] })
+    ] });
+  }
+  if (hasNoData) {
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.container, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.empty, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "No Courses Found" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+          "window.openai status: ",
+          window.openai ? "Available" : "Not available"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+          "metadata: ",
+          metadata ? "Present" : "Missing"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+          "toolOutput: ",
+          toolOutput ? "Present" : "Missing"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: handleCreateCourse, style: styles.createButton, children: "Create First Course" })
+      ] }),
+      debugMode && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.debugPanel, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: styles.debugTitle, children: "Debug Info" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { id: "debug-log", style: styles.debugLog })
+      ] })
     ] });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.container, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "button",
+      {
+        onClick: () => setDebugMode(!debugMode),
+        style: styles.debugToggleSmall,
+        title: "Toggle debug panel",
+        children: "\u{1F41B}"
+      }
+    ),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.header, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.headerLeft, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h1", { style: styles.title, children: [
@@ -24571,14 +24741,14 @@ function CoursesWidget() {
           widgetState.searchQuery && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "button",
             {
-              style: styles.clearButton,
+              style: styles.clearSearchButton,
               onClick: () => updateWidgetState({ searchQuery: "" }),
               children: "\u2715"
             }
           )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.dropdown, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: styles.label, children: "Filter by:" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: styles.label, children: "Filter:" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "select",
             {
@@ -24586,15 +24756,15 @@ function CoursesWidget() {
               value: widgetState.filterBy,
               onChange: (e) => updateWidgetState({ filterBy: e.target.value }),
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "all", children: "All courses" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "draft", children: "Draft only" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "published", children: "Published only" })
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "all", children: "All" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "draft", children: "Draft" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "published", children: "Published" })
               ]
             }
           )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.dropdown, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: styles.label, children: "Sort by:" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: styles.label, children: "Sort:" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "select",
             {
@@ -24602,9 +24772,9 @@ function CoursesWidget() {
               value: widgetState.sortBy,
               onChange: (e) => updateWidgetState({ sortBy: e.target.value }),
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "created", children: "Created time" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "created", children: "Created" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "name", children: "Name" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "enrolled", children: "Enrollment" })
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "enrolled", children: "Enrolled" })
               ]
             }
           )
@@ -24619,7 +24789,6 @@ function CoursesWidget() {
               ...widgetState.viewMode === "grid" ? styles.viewButtonActive : {}
             },
             onClick: () => updateWidgetState({ viewMode: "grid" }),
-            title: "Grid view",
             children: "\u229E"
           }
         ),
@@ -24631,7 +24800,6 @@ function CoursesWidget() {
               ...widgetState.viewMode === "list" ? styles.viewButtonActive : {}
             },
             onClick: () => updateWidgetState({ viewMode: "list" }),
-            title: "List view",
             children: "\u2630"
           }
         )
@@ -24646,16 +24814,23 @@ function CoursesWidget() {
       },
       course.courseId
     )) }),
-    filteredCourses.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.empty, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: styles.emptyText, children: "No courses found" }),
-      widgetState.searchQuery && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    filteredCourses.length === 0 && courses.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.emptyFiltered, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No courses match your filters" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "button",
         {
-          style: styles.clearFiltersButton,
           onClick: () => updateWidgetState({ searchQuery: "", filterBy: "all" }),
-          children: "Clear filters"
+          style: styles.clearButton,
+          children: "Clear Filters"
         }
       )
+    ] }),
+    debugMode && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.debugPanel, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: styles.debugTitle, children: "Debug Info" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { id: "debug-log", style: styles.debugLog }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => {
+        document.getElementById("debug-log").innerHTML = "";
+      }, style: styles.clearButton, children: "Clear Log" })
     ] })
   ] });
 }
@@ -24686,8 +24861,7 @@ function CourseCard({ course, viewMode, onClick }) {
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: styles.listStat, children: [
             "\u{1F465} ",
-            course.enrolledCount || 0,
-            " enrolled"
+            course.enrolledCount || 0
           ] })
         ] })
       ] })
@@ -24701,47 +24875,35 @@ function CourseCard({ course, viewMode, onClick }) {
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.cardContent, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: styles.courseName, children: course.courseName }),
       course.subTitle && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: styles.subtitle, children: course.subTitle }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.cardFooter, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.statsRow, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: styles.stat, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: styles.statIcon, children: "\u{1F4CA}" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: course.rating || 0 })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: styles.stat, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: styles.statIcon, children: "\u{1F465}" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-              course.enrolledCount || 0,
-              " enrolled"
-            ] })
-          ] })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.cardFooter, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.statsRow, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: styles.stat, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u{1F4CA}" }),
+          " ",
+          course.rating || 0
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            style: styles.menuButton,
-            onClick: (e) => {
-              e.stopPropagation();
-            },
-            children: "\u22EE"
-          }
-        )
-      ] })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: styles.stat, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u{1F465}" }),
+          " ",
+          course.enrolledCount || 0
+        ] })
+      ] }) })
     ] })
   ] });
 }
 var styles = {
   container: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    padding: "24px",
+    padding: "20px",
     backgroundColor: "#f8f9fa",
-    minHeight: "100vh"
+    minHeight: "100vh",
+    position: "relative"
   },
   loading: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    height: "400px",
+    minHeight: "400px",
     gap: "16px"
   },
   spinner: {
@@ -24754,14 +24916,58 @@ var styles = {
   },
   loadingText: {
     color: "#666",
-    fontSize: "14px"
+    fontSize: "16px"
+  },
+  debugToggle: {
+    marginTop: "20px",
+    padding: "10px 20px",
+    backgroundColor: "#333",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer"
+  },
+  debugToggleSmall: {
+    position: "fixed",
+    top: "10px",
+    right: "10px",
+    width: "40px",
+    height: "40px",
+    backgroundColor: "#333",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    cursor: "pointer",
+    fontSize: "20px",
+    zIndex: 1e3
+  },
+  debugPanel: {
+    marginTop: "20px",
+    padding: "16px",
+    backgroundColor: "#1a1a1a",
+    borderRadius: "8px",
+    color: "white"
+  },
+  debugTitle: {
+    margin: "0 0 12px 0",
+    fontSize: "14px",
+    color: "#ff6b35"
+  },
+  debugLog: {
+    maxHeight: "300px",
+    overflowY: "auto",
+    backgroundColor: "#000",
+    padding: "12px",
+    borderRadius: "4px",
+    fontSize: "11px",
+    fontFamily: "monospace",
+    marginBottom: "12px"
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: "24px",
-    gap: "16px"
+    marginBottom: "20px"
   },
   headerLeft: {
     display: "flex",
@@ -24769,18 +24975,18 @@ var styles = {
     gap: "8px"
   },
   title: {
-    fontSize: "28px",
+    fontSize: "24px",
     fontWeight: "600",
     margin: 0,
     color: "#1a1a1a"
   },
   stats: {
     display: "flex",
-    gap: "12px"
+    gap: "10px"
   },
   statBadge: {
-    fontSize: "13px",
-    padding: "4px 12px",
+    fontSize: "12px",
+    padding: "4px 10px",
     borderRadius: "12px",
     backgroundColor: "#e8f5e9",
     color: "#2e7d32",
@@ -24795,99 +25001,89 @@ var styles = {
     color: "white",
     border: "none",
     borderRadius: "8px",
-    padding: "12px 24px",
-    fontSize: "15px",
+    padding: "10px 20px",
+    fontSize: "14px",
     fontWeight: "600",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    transition: "all 0.2s",
-    boxShadow: "0 2px 8px rgba(255, 107, 53, 0.2)"
+    gap: "6px"
   },
   createIcon: {
-    fontSize: "18px"
+    fontSize: "16px"
   },
   controls: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "24px",
-    gap: "16px",
+    marginBottom: "20px",
+    gap: "12px",
     flexWrap: "wrap"
   },
   controlsLeft: {
     display: "flex",
     gap: "12px",
     flex: 1,
-    flexWrap: "wrap",
-    alignItems: "center"
+    flexWrap: "wrap"
   },
   searchBox: {
     display: "flex",
     alignItems: "center",
     backgroundColor: "white",
-    border: "1px solid #e0e0e0",
-    borderRadius: "8px",
-    padding: "10px 14px",
-    minWidth: "240px",
-    gap: "8px"
+    border: "1px solid #ddd",
+    borderRadius: "6px",
+    padding: "8px 12px",
+    minWidth: "200px"
   },
   searchIcon: {
-    fontSize: "16px",
-    color: "#999"
+    marginRight: "8px"
   },
   searchInput: {
     border: "none",
     outline: "none",
     flex: 1,
-    fontSize: "14px",
-    fontFamily: "inherit"
+    fontSize: "14px"
   },
-  clearButton: {
+  clearSearchButton: {
     background: "none",
     border: "none",
     cursor: "pointer",
     padding: "4px",
-    color: "#999",
-    fontSize: "14px"
+    color: "#999"
   },
   dropdown: {
     display: "flex",
     alignItems: "center",
-    gap: "8px"
+    gap: "6px"
   },
   label: {
-    fontSize: "14px",
+    fontSize: "13px",
     color: "#666",
-    fontWeight: "500",
-    whiteSpace: "nowrap"
+    fontWeight: "500"
   },
   select: {
-    border: "1px solid #e0e0e0",
-    borderRadius: "8px",
-    padding: "10px 14px",
+    border: "1px solid #ddd",
+    borderRadius: "6px",
+    padding: "8px 12px",
     fontSize: "14px",
     backgroundColor: "white",
-    cursor: "pointer",
-    fontFamily: "inherit"
+    cursor: "pointer"
   },
   viewToggle: {
     display: "flex",
     gap: "4px",
     backgroundColor: "white",
     padding: "4px",
-    borderRadius: "8px",
-    border: "1px solid #e0e0e0"
+    borderRadius: "6px",
+    border: "1px solid #ddd"
   },
   viewButton: {
     backgroundColor: "transparent",
     border: "none",
-    borderRadius: "6px",
-    padding: "8px 12px",
-    fontSize: "18px",
+    borderRadius: "4px",
+    padding: "6px 10px",
+    fontSize: "16px",
     cursor: "pointer",
-    transition: "all 0.2s",
     color: "#666"
   },
   viewButtonActive: {
@@ -24896,8 +25092,8 @@ var styles = {
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    gap: "20px"
+    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+    gap: "16px"
   },
   list: {
     display: "flex",
@@ -24906,103 +25102,78 @@ var styles = {
   },
   card: {
     backgroundColor: "white",
-    borderRadius: "12px",
+    borderRadius: "10px",
     overflow: "hidden",
     cursor: "pointer",
-    transition: "all 0.2s",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-    border: "1px solid #f0f0f0"
+    transition: "transform 0.2s",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
   },
   thumbnail: {
-    height: "160px",
+    height: "140px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     position: "relative"
   },
   thumbnailIcon: {
-    fontSize: "56px",
+    fontSize: "48px",
     opacity: 0.3
   },
   draftBadge: {
     position: "absolute",
-    top: "12px",
-    right: "12px",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    padding: "6px 14px",
-    borderRadius: "14px",
-    fontSize: "12px",
+    top: "10px",
+    right: "10px",
+    backgroundColor: "rgba(255,255,255,0.95)",
+    padding: "4px 10px",
+    borderRadius: "12px",
+    fontSize: "11px",
     fontWeight: "600",
-    color: "#666",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+    color: "#666"
   },
   cardContent: {
-    padding: "16px"
+    padding: "14px"
   },
   courseName: {
-    fontSize: "16px",
+    fontSize: "15px",
     fontWeight: "600",
-    margin: "0 0 8px 0",
+    margin: "0 0 6px 0",
     color: "#1a1a1a",
-    lineHeight: "1.4",
-    minHeight: "44px",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden"
+    lineHeight: "1.3",
+    minHeight: "40px"
   },
   subtitle: {
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#666",
-    marginBottom: "12px",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden"
+    marginBottom: "10px"
   },
   cardFooter: {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    alignItems: "center"
   },
   statsRow: {
     display: "flex",
-    gap: "12px"
+    gap: "10px"
   },
   stat: {
     display: "flex",
     alignItems: "center",
     gap: "4px",
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#666"
-  },
-  statIcon: {
-    fontSize: "15px"
-  },
-  menuButton: {
-    backgroundColor: "transparent",
-    border: "none",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: "4px 8px",
-    color: "#999",
-    borderRadius: "4px",
-    transition: "all 0.2s"
   },
   listCard: {
     backgroundColor: "white",
-    borderRadius: "12px",
-    padding: "16px",
+    borderRadius: "10px",
+    padding: "14px",
     display: "flex",
-    gap: "16px",
+    gap: "14px",
     cursor: "pointer",
-    transition: "all 0.2s",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-    border: "1px solid #f0f0f0"
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
   },
   listThumbnail: {
-    width: "80px",
-    height: "80px",
+    width: "70px",
+    height: "70px",
     borderRadius: "8px",
     display: "flex",
     alignItems: "center",
@@ -25016,51 +25187,51 @@ var styles = {
     justifyContent: "space-between"
   },
   listCourseName: {
-    fontSize: "16px",
+    fontSize: "15px",
     fontWeight: "600",
     margin: "0 0 4px 0",
     color: "#1a1a1a"
   },
   listSubtitle: {
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#666",
     margin: 0
   },
   listFooter: {
     display: "flex",
-    gap: "12px",
+    gap: "10px",
     alignItems: "center"
   },
   listDraftBadge: {
-    fontSize: "12px",
-    padding: "4px 10px",
-    borderRadius: "12px",
+    fontSize: "11px",
+    padding: "3px 8px",
+    borderRadius: "10px",
     backgroundColor: "#f5f5f5",
     color: "#666",
     fontWeight: "600"
   },
   listStat: {
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#666"
   },
   empty: {
     textAlign: "center",
-    padding: "80px 20px",
+    padding: "60px 20px",
+    color: "#666"
+  },
+  emptyFiltered: {
+    textAlign: "center",
+    padding: "40px 20px",
     color: "#999"
   },
-  emptyText: {
-    fontSize: "16px",
-    marginBottom: "16px"
-  },
-  clearFiltersButton: {
+  clearButton: {
+    marginTop: "12px",
+    padding: "8px 16px",
     backgroundColor: "#f0f0f0",
     border: "none",
-    borderRadius: "8px",
-    padding: "10px 20px",
-    fontSize: "14px",
+    borderRadius: "6px",
     cursor: "pointer",
-    fontWeight: "500",
-    color: "#666"
+    fontSize: "13px"
   }
 };
 var styleSheet = document.createElement("style");
@@ -25069,20 +25240,14 @@ styleSheet.textContent = `
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-  
-  [style*="cursor: pointer"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
-  }
-  
-  button:hover {
-    opacity: 0.9;
-  }
 `;
 document.head.appendChild(styleSheet);
 var root = document.getElementById("root");
 if (root) {
+  log("MOUNT", "Mounting React component to #root");
   (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));
+} else {
+  log("ERROR", "Root element #root not found!");
 }
 var CoursesWidget_default = CoursesWidget;
 export {

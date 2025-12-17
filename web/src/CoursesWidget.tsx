@@ -1,12 +1,38 @@
 /**
- * CoursesWidget.tsx - UPDATED
+ * CoursesWidget.tsx - WITH COMPREHENSIVE LOGGING
  * 
- * Properly integrates with ChatGPT widget runtime using window.openai
- * Uses @openai/apps-sdk-ui components for consistent styling
+ * This version logs everything to help debug why the widget isn't loading
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
+
+// =============================================================================
+// LOGGING HELPER
+// =============================================================================
+
+function log(category: string, message: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] [${category}] ${message}`;
+  
+  console.log(logMessage);
+  if (data !== undefined) {
+    console.log('Data:', data);
+  }
+  
+  // Also show in UI for debugging
+  const debugDiv = document.getElementById('debug-log');
+  if (debugDiv) {
+    const entry = document.createElement('div');
+    entry.style.fontSize = '11px';
+    entry.style.padding = '4px';
+    entry.style.borderBottom = '1px solid #eee';
+    entry.style.fontFamily = 'monospace';
+    entry.textContent = logMessage;
+    debugDiv.appendChild(entry);
+    debugDiv.scrollTop = debugDiv.scrollHeight;
+  }
+}
 
 // =============================================================================
 // Type Definitions
@@ -21,14 +47,13 @@ interface Course {
   enrolledCount?: number;
   rating?: number;
   createdTime?: string;
-  courseCategories?: Array<{ categoryName: string }>;
 }
 
 interface CoursesMetadata {
   courses: Course[];
-  courseCategories: any[];
+  courseCategories?: any[];
   totalCourseCount: number;
-  stats: {
+  stats?: {
     total: number;
     published: number;
     draft: number;
@@ -42,12 +67,12 @@ interface WidgetState {
   searchQuery: string;
 }
 
-// Extend window type for TypeScript
 declare global {
   interface Window {
     openai?: {
       toolOutput?: any;
-      toolResponseMetadata?: CoursesMetadata;
+      toolResponseMetadata?: any;
+      toolInput?: any;
       widgetState?: WidgetState;
       setWidgetState?: (state: WidgetState) => void;
       sendFollowUpMessage?: (params: { prompt: string }) => Promise<void>;
@@ -63,10 +88,55 @@ declare global {
 // =============================================================================
 
 function CoursesWidget() {
+  log('INIT', 'Widget component mounting');
+  
+  const [debugMode, setDebugMode] = useState(true);
+  const [renderKey, setRenderKey] = useState(0);
+  
+  // Log window.openai availability
+  useEffect(() => {
+    log('CHECK', 'Checking window.openai...', {
+      exists: !!window.openai,
+      keys: window.openai ? Object.keys(window.openai) : []
+    });
+    
+    if (window.openai) {
+      log('OPENAI', 'window.openai contents:', {
+        toolOutput: window.openai.toolOutput,
+        toolResponseMetadata: window.openai.toolResponseMetadata,
+        toolInput: window.openai.toolInput,
+        widgetState: window.openai.widgetState,
+        hasSetWidgetState: !!window.openai.setWidgetState,
+        hasSendFollowUp: !!window.openai.sendFollowUpMessage,
+        hasCallTool: !!window.openai.callTool
+      });
+    } else {
+      log('ERROR', 'window.openai is NOT available!');
+    }
+    
+    // Listen for window.openai changes
+    const interval = setInterval(() => {
+      if (window.openai && !metadata) {
+        log('POLL', 'window.openai became available, re-rendering');
+        setRenderKey(prev => prev + 1);
+      }
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
   // Read from window.openai
   const toolOutput = window.openai?.toolOutput;
   const metadata = window.openai?.toolResponseMetadata;
   const savedState = window.openai?.widgetState;
+  
+  log('DATA', 'Current data state', {
+    hasToolOutput: !!toolOutput,
+    hasMetadata: !!metadata,
+    hasSavedState: !!savedState,
+    toolOutputKeys: toolOutput ? Object.keys(toolOutput) : [],
+    metadataKeys: metadata ? Object.keys(metadata) : []
+  });
   
   // Local state
   const [widgetState, setLocalWidgetState] = useState<WidgetState>(
@@ -80,17 +150,65 @@ function CoursesWidget() {
   
   // Update widget state helper
   const updateWidgetState = (updates: Partial<WidgetState>) => {
+    log('STATE', 'Updating widget state', updates);
     const newState = { ...widgetState, ...updates };
     setLocalWidgetState(newState);
-    window.openai?.setWidgetState?.(newState);
+    
+    if (window.openai?.setWidgetState) {
+      window.openai.setWidgetState(newState);
+      log('STATE', 'Called window.openai.setWidgetState');
+    } else {
+      log('WARN', 'window.openai.setWidgetState not available');
+    }
   };
   
-  // Extract courses data
-  const courses = metadata?.courses || [];
-  const stats = metadata?.stats || { total: 0, published: 0, draft: 0 };
+  // Extract courses data - try multiple paths
+  let courses: Course[] = [];
+  let totalCount = 0;
+  let stats = { total: 0, published: 0, draft: 0 };
+  
+  if (metadata) {
+    log('PARSE', 'Parsing metadata', metadata);
+    
+    // Try multiple possible data structures
+    if (metadata.courses) {
+      courses = metadata.courses;
+      log('PARSE', `Found ${courses.length} courses in metadata.courses`);
+    } else if (Array.isArray(metadata)) {
+      courses = metadata;
+      log('PARSE', `metadata is array with ${courses.length} items`);
+    }
+    
+    totalCount = metadata.totalCourseCount || metadata.total || courses.length;
+    stats = metadata.stats || {
+      total: totalCount,
+      published: courses.filter(c => c.publishStatus === 'PUBLISHED').length,
+      draft: courses.filter(c => c.publishStatus !== 'PUBLISHED').length
+    };
+  } else if (toolOutput) {
+    log('PARSE', 'Trying to parse from toolOutput', toolOutput);
+    
+    if (toolOutput.courses) {
+      courses = toolOutput.courses;
+      log('PARSE', `Found ${courses.length} courses in toolOutput.courses`);
+    }
+  }
+  
+  log('FINAL', 'Final parsed data', {
+    courseCount: courses.length,
+    totalCount,
+    stats
+  });
   
   // Filter and sort courses
   const filteredCourses = useMemo(() => {
+    log('FILTER', 'Filtering courses', {
+      totalCourses: courses.length,
+      filterBy: widgetState.filterBy,
+      searchQuery: widgetState.searchQuery,
+      sortBy: widgetState.sortBy
+    });
+    
     let filtered = courses;
     
     // Apply filter by status
@@ -124,42 +242,121 @@ function CoursesWidget() {
       }
     });
     
+    log('FILTER', `Filtered to ${sorted.length} courses`);
     return sorted;
   }, [courses, widgetState]);
   
   // Handle course click
   const handleCourseClick = async (course: Course) => {
-    await window.openai?.sendFollowUpMessage?.({
-      prompt: `Show me details for the course "${course.courseName}" (ID: ${course.courseId})`
-    });
+    log('ACTION', 'Course clicked', { courseId: course.courseId, name: course.courseName });
+    
+    if (window.openai?.sendFollowUpMessage) {
+      try {
+        await window.openai.sendFollowUpMessage({
+          prompt: `Show me details for the course "${course.courseName}" (ID: ${course.courseId})`
+        });
+        log('ACTION', 'Follow-up message sent successfully');
+      } catch (err) {
+        log('ERROR', 'Failed to send follow-up', err);
+      }
+    } else {
+      log('WARN', 'window.openai.sendFollowUpMessage not available');
+    }
   };
   
   // Handle create course
   const handleCreateCourse = async () => {
-    await window.openai?.sendFollowUpMessage?.({
-      prompt: "I want to create a new course"
-    });
+    log('ACTION', 'Create course clicked');
+    
+    if (window.openai?.sendFollowUpMessage) {
+      try {
+        await window.openai.sendFollowUpMessage({
+          prompt: "I want to create a new course"
+        });
+        log('ACTION', 'Create course message sent');
+      } catch (err) {
+        log('ERROR', 'Failed to send create message', err);
+      }
+    }
   };
   
-  // Handle refresh
-  const handleRefresh = async () => {
-    await window.openai?.callTool?.('tc_list_courses_with_widget', {
-      orgId: metadata?.orgId
-    });
-  };
+  // RENDER DECISION
+  const shouldShowLoading = !metadata && !toolOutput;
+  const hasNoData = courses.length === 0;
+  
+  log('RENDER', 'Render decision', {
+    shouldShowLoading,
+    hasNoData,
+    hasCourses: courses.length > 0
+  });
   
   // Loading state
-  if (!metadata || !courses.length) {
+  if (shouldShowLoading) {
     return (
-      <div style={styles.loading}>
-        <div style={styles.spinner}></div>
-        <p style={styles.loadingText}>Loading courses...</p>
+      <div style={styles.container}>
+        <div style={styles.loading}>
+          <div style={styles.spinner}></div>
+          <p style={styles.loadingText}>Loading courses...</p>
+          <button 
+            onClick={() => setDebugMode(!debugMode)}
+            style={styles.debugToggle}
+          >
+            {debugMode ? 'Hide' : 'Show'} Debug
+          </button>
+        </div>
+        
+        {debugMode && (
+          <div style={styles.debugPanel}>
+            <h3 style={styles.debugTitle}>Debug Info</h3>
+            <div id="debug-log" style={styles.debugLog}></div>
+            <button onClick={() => {
+              document.getElementById('debug-log')!.innerHTML = '';
+              log('DEBUG', 'Log cleared');
+            }} style={styles.clearButton}>
+              Clear Log
+            </button>
+          </div>
+        )}
       </div>
     );
   }
   
+  // No data state
+  if (hasNoData) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.empty}>
+          <h2>No Courses Found</h2>
+          <p>window.openai status: {window.openai ? 'Available' : 'Not available'}</p>
+          <p>metadata: {metadata ? 'Present' : 'Missing'}</p>
+          <p>toolOutput: {toolOutput ? 'Present' : 'Missing'}</p>
+          <button onClick={handleCreateCourse} style={styles.createButton}>
+            Create First Course
+          </button>
+        </div>
+        
+        {debugMode && (
+          <div style={styles.debugPanel}>
+            <h3 style={styles.debugTitle}>Debug Info</h3>
+            <div id="debug-log" style={styles.debugLog}></div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Main render
   return (
     <div style={styles.container}>
+      {/* Debug toggle */}
+      <button 
+        onClick={() => setDebugMode(!debugMode)}
+        style={styles.debugToggleSmall}
+        title="Toggle debug panel"
+      >
+        🐛
+      </button>
+      
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
@@ -194,7 +391,7 @@ function CoursesWidget() {
             />
             {widgetState.searchQuery && (
               <button
-                style={styles.clearButton}
+                style={styles.clearSearchButton}
                 onClick={() => updateWidgetState({ searchQuery: '' })}
               >
                 ✕
@@ -204,29 +401,29 @@ function CoursesWidget() {
           
           {/* Filter */}
           <div style={styles.dropdown}>
-            <label style={styles.label}>Filter by:</label>
+            <label style={styles.label}>Filter:</label>
             <select
               style={styles.select}
               value={widgetState.filterBy}
               onChange={(e) => updateWidgetState({ filterBy: e.target.value as any })}
             >
-              <option value="all">All courses</option>
-              <option value="draft">Draft only</option>
-              <option value="published">Published only</option>
+              <option value="all">All</option>
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
             </select>
           </div>
           
           {/* Sort */}
           <div style={styles.dropdown}>
-            <label style={styles.label}>Sort by:</label>
+            <label style={styles.label}>Sort:</label>
             <select
               style={styles.select}
               value={widgetState.sortBy}
               onChange={(e) => updateWidgetState({ sortBy: e.target.value as any })}
             >
-              <option value="created">Created time</option>
+              <option value="created">Created</option>
               <option value="name">Name</option>
-              <option value="enrolled">Enrollment</option>
+              <option value="enrolled">Enrolled</option>
             </select>
           </div>
         </div>
@@ -239,7 +436,6 @@ function CoursesWidget() {
               ...(widgetState.viewMode === 'grid' ? styles.viewButtonActive : {})
             }}
             onClick={() => updateWidgetState({ viewMode: 'grid' })}
-            title="Grid view"
           >
             ⊞
           </button>
@@ -249,7 +445,6 @@ function CoursesWidget() {
               ...(widgetState.viewMode === 'list' ? styles.viewButtonActive : {})
             }}
             onClick={() => updateWidgetState({ viewMode: 'list' })}
-            title="List view"
           >
             ☰
           </button>
@@ -268,18 +463,29 @@ function CoursesWidget() {
         ))}
       </div>
       
-      {/* Empty state */}
-      {filteredCourses.length === 0 && (
-        <div style={styles.empty}>
-          <p style={styles.emptyText}>No courses found</p>
-          {widgetState.searchQuery && (
-            <button
-              style={styles.clearFiltersButton}
-              onClick={() => updateWidgetState({ searchQuery: '', filterBy: 'all' })}
-            >
-              Clear filters
-            </button>
-          )}
+      {/* Empty filtered state */}
+      {filteredCourses.length === 0 && courses.length > 0 && (
+        <div style={styles.emptyFiltered}>
+          <p>No courses match your filters</p>
+          <button
+            onClick={() => updateWidgetState({ searchQuery: '', filterBy: 'all' })}
+            style={styles.clearButton}
+          >
+            Clear Filters
+          </button>
+        </div>
+      )}
+      
+      {/* Debug panel */}
+      {debugMode && (
+        <div style={styles.debugPanel}>
+          <h3 style={styles.debugTitle}>Debug Info</h3>
+          <div id="debug-log" style={styles.debugLog}></div>
+          <button onClick={() => {
+            document.getElementById('debug-log')!.innerHTML = '';
+          }} style={styles.clearButton}>
+            Clear Log
+          </button>
         </div>
       )}
     </div>
@@ -299,7 +505,6 @@ interface CourseCardProps {
 function CourseCard({ course, viewMode, onClick }: CourseCardProps) {
   const isDraft = course.publishStatus === 'DRAFT' || course.publishStatus === 'NONE';
   
-  // Generate gradient based on course name
   const gradients = [
     'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
     'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
@@ -326,12 +531,8 @@ function CourseCard({ course, viewMode, onClick }: CourseCardProps) {
           </div>
           <div style={styles.listFooter}>
             {isDraft && <span style={styles.listDraftBadge}>Draft</span>}
-            <span style={styles.listStat}>
-              📊 {course.rating || 0.0}
-            </span>
-            <span style={styles.listStat}>
-              👥 {course.enrolledCount || 0} enrolled
-            </span>
+            <span style={styles.listStat}>📊 {course.rating || 0.0}</span>
+            <span style={styles.listStat}>👥 {course.enrolledCount || 0}</span>
           </div>
         </div>
       </div>
@@ -340,42 +541,22 @@ function CourseCard({ course, viewMode, onClick }: CourseCardProps) {
   
   return (
     <div style={styles.card} onClick={onClick}>
-      {/* Thumbnail */}
       <div style={{ ...styles.thumbnail, background: gradient }}>
         <span style={styles.thumbnailIcon}>📚</span>
-        {isDraft && (
-          <span style={styles.draftBadge}>Draft</span>
-        )}
+        {isDraft && <span style={styles.draftBadge}>Draft</span>}
       </div>
-      
-      {/* Content */}
       <div style={styles.cardContent}>
         <h3 style={styles.courseName}>{course.courseName}</h3>
-        
-        {course.subTitle && (
-          <p style={styles.subtitle}>{course.subTitle}</p>
-        )}
-        
+        {course.subTitle && <p style={styles.subtitle}>{course.subTitle}</p>}
         <div style={styles.cardFooter}>
           <div style={styles.statsRow}>
             <span style={styles.stat}>
-              <span style={styles.statIcon}>📊</span>
-              <span>{course.rating || 0.0}</span>
+              <span>📊</span> {course.rating || 0.0}
             </span>
             <span style={styles.stat}>
-              <span style={styles.statIcon}>👥</span>
-              <span>{course.enrolledCount || 0} enrolled</span>
+              <span>👥</span> {course.enrolledCount || 0}
             </span>
           </div>
-          <button
-            style={styles.menuButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              // Show context menu (future enhancement)
-            }}
-          >
-            ⋮
-          </button>
         </div>
       </div>
     </div>
@@ -389,16 +570,17 @@ function CourseCard({ course, viewMode, onClick }: CourseCardProps) {
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    padding: '24px',
+    padding: '20px',
     backgroundColor: '#f8f9fa',
     minHeight: '100vh',
+    position: 'relative',
   },
   loading: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '400px',
+    minHeight: '400px',
     gap: '16px',
   },
   spinner: {
@@ -411,14 +593,58 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   loadingText: {
     color: '#666',
+    fontSize: '16px',
+  },
+  debugToggle: {
+    marginTop: '20px',
+    padding: '10px 20px',
+    backgroundColor: '#333',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  debugToggleSmall: {
+    position: 'fixed',
+    top: '10px',
+    right: '10px',
+    width: '40px',
+    height: '40px',
+    backgroundColor: '#333',
+    color: 'white',
+    border: 'none',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '20px',
+    zIndex: 1000,
+  },
+  debugPanel: {
+    marginTop: '20px',
+    padding: '16px',
+    backgroundColor: '#1a1a1a',
+    borderRadius: '8px',
+    color: 'white',
+  },
+  debugTitle: {
+    margin: '0 0 12px 0',
     fontSize: '14px',
+    color: '#ff6b35',
+  },
+  debugLog: {
+    maxHeight: '300px',
+    overflowY: 'auto',
+    backgroundColor: '#000',
+    padding: '12px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    marginBottom: '12px',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: '24px',
-    gap: '16px',
+    marginBottom: '20px',
   },
   headerLeft: {
     display: 'flex',
@@ -426,18 +652,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '8px',
   },
   title: {
-    fontSize: '28px',
+    fontSize: '24px',
     fontWeight: '600',
     margin: 0,
     color: '#1a1a1a',
   },
   stats: {
     display: 'flex',
-    gap: '12px',
+    gap: '10px',
   },
   statBadge: {
-    fontSize: '13px',
-    padding: '4px 12px',
+    fontSize: '12px',
+    padding: '4px 10px',
     borderRadius: '12px',
     backgroundColor: '#e8f5e9',
     color: '#2e7d32',
@@ -452,25 +678,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: 'white',
     border: 'none',
     borderRadius: '8px',
-    padding: '12px 24px',
-    fontSize: '15px',
+    padding: '10px 20px',
+    fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    transition: 'all 0.2s',
-    boxShadow: '0 2px 8px rgba(255, 107, 53, 0.2)',
+    gap: '6px',
   },
   createIcon: {
-    fontSize: '18px',
+    fontSize: '16px',
   },
   controls: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
-    gap: '16px',
+    marginBottom: '20px',
+    gap: '12px',
     flexWrap: 'wrap',
   },
   controlsLeft: {
@@ -478,73 +702,65 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '12px',
     flex: 1,
     flexWrap: 'wrap',
-    alignItems: 'center',
   },
   searchBox: {
     display: 'flex',
     alignItems: 'center',
     backgroundColor: 'white',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    padding: '10px 14px',
-    minWidth: '240px',
-    gap: '8px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    padding: '8px 12px',
+    minWidth: '200px',
   },
   searchIcon: {
-    fontSize: '16px',
-    color: '#999',
+    marginRight: '8px',
   },
   searchInput: {
     border: 'none',
     outline: 'none',
     flex: 1,
     fontSize: '14px',
-    fontFamily: 'inherit',
   },
-  clearButton: {
+  clearSearchButton: {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
     padding: '4px',
     color: '#999',
-    fontSize: '14px',
   },
   dropdown: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
   },
   label: {
-    fontSize: '14px',
+    fontSize: '13px',
     color: '#666',
     fontWeight: '500',
-    whiteSpace: 'nowrap',
   },
   select: {
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    padding: '10px 14px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    padding: '8px 12px',
     fontSize: '14px',
     backgroundColor: 'white',
     cursor: 'pointer',
-    fontFamily: 'inherit',
   },
   viewToggle: {
     display: 'flex',
     gap: '4px',
     backgroundColor: 'white',
     padding: '4px',
-    borderRadius: '8px',
-    border: '1px solid #e0e0e0',
+    borderRadius: '6px',
+    border: '1px solid #ddd',
   },
   viewButton: {
     backgroundColor: 'transparent',
     border: 'none',
-    borderRadius: '6px',
-    padding: '8px 12px',
-    fontSize: '18px',
+    borderRadius: '4px',
+    padding: '6px 10px',
+    fontSize: '16px',
     cursor: 'pointer',
-    transition: 'all 0.2s',
     color: '#666',
   },
   viewButtonActive: {
@@ -553,8 +769,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '20px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gap: '16px',
   },
   list: {
     display: 'flex',
@@ -563,103 +779,78 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   card: {
     backgroundColor: 'white',
-    borderRadius: '12px',
+    borderRadius: '10px',
     overflow: 'hidden',
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'transform 0.2s',
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    border: '1px solid #f0f0f0',
   },
   thumbnail: {
-    height: '160px',
+    height: '140px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   thumbnailIcon: {
-    fontSize: '56px',
+    fontSize: '48px',
     opacity: 0.3,
   },
   draftBadge: {
     position: 'absolute',
-    top: '12px',
-    right: '12px',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: '6px 14px',
-    borderRadius: '14px',
-    fontSize: '12px',
+    top: '10px',
+    right: '10px',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    padding: '4px 10px',
+    borderRadius: '12px',
+    fontSize: '11px',
     fontWeight: '600',
     color: '#666',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   },
   cardContent: {
-    padding: '16px',
+    padding: '14px',
   },
   courseName: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '600',
-    margin: '0 0 8px 0',
+    margin: '0 0 6px 0',
     color: '#1a1a1a',
-    lineHeight: '1.4',
-    minHeight: '44px',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
+    lineHeight: '1.3',
+    minHeight: '40px',
   },
   subtitle: {
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#666',
-    marginBottom: '12px',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
+    marginBottom: '10px',
   },
   cardFooter: {
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   statsRow: {
     display: 'flex',
-    gap: '12px',
+    gap: '10px',
   },
   stat: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#666',
-  },
-  statIcon: {
-    fontSize: '15px',
-  },
-  menuButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '20px',
-    cursor: 'pointer',
-    padding: '4px 8px',
-    color: '#999',
-    borderRadius: '4px',
-    transition: 'all 0.2s',
   },
   listCard: {
     backgroundColor: 'white',
-    borderRadius: '12px',
-    padding: '16px',
+    borderRadius: '10px',
+    padding: '14px',
     display: 'flex',
-    gap: '16px',
+    gap: '14px',
     cursor: 'pointer',
-    transition: 'all 0.2s',
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    border: '1px solid #f0f0f0',
   },
   listThumbnail: {
-    width: '80px',
-    height: '80px',
+    width: '70px',
+    height: '70px',
     borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
@@ -673,51 +864,51 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'space-between',
   },
   listCourseName: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '600',
     margin: '0 0 4px 0',
     color: '#1a1a1a',
   },
   listSubtitle: {
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#666',
     margin: 0,
   },
   listFooter: {
     display: 'flex',
-    gap: '12px',
+    gap: '10px',
     alignItems: 'center',
   },
   listDraftBadge: {
-    fontSize: '12px',
-    padding: '4px 10px',
-    borderRadius: '12px',
+    fontSize: '11px',
+    padding: '3px 8px',
+    borderRadius: '10px',
     backgroundColor: '#f5f5f5',
     color: '#666',
     fontWeight: '600',
   },
   listStat: {
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#666',
   },
   empty: {
     textAlign: 'center',
-    padding: '80px 20px',
+    padding: '60px 20px',
+    color: '#666',
+  },
+  emptyFiltered: {
+    textAlign: 'center',
+    padding: '40px 20px',
     color: '#999',
   },
-  emptyText: {
-    fontSize: '16px',
-    marginBottom: '16px',
-  },
-  clearFiltersButton: {
+  clearButton: {
+    marginTop: '12px',
+    padding: '8px 16px',
     backgroundColor: '#f0f0f0',
     border: 'none',
-    borderRadius: '8px',
-    padding: '10px 20px',
-    fontSize: '14px',
+    borderRadius: '6px',
     cursor: 'pointer',
-    fontWeight: '500',
-    color: '#666',
+    fontSize: '13px',
   },
 };
 
@@ -728,25 +919,19 @@ styleSheet.textContent = `
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-  
-  [style*="cursor: pointer"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
-  }
-  
-  button:hover {
-    opacity: 0.9;
-  }
 `;
 document.head.appendChild(styleSheet);
 
 // =============================================================================
-// Mount the Component
+// Mount
 // =============================================================================
 
 const root = document.getElementById('root');
 if (root) {
+  log('MOUNT', 'Mounting React component to #root');
   createRoot(root).render(<CoursesWidget />);
+} else {
+  log('ERROR', 'Root element #root not found!');
 }
 
 export default CoursesWidget;
