@@ -903,12 +903,12 @@ declare global {
 // Helpers
 // -----------------------------------------------------------------------------
 
-function log(level: 'info' | 'warn' | 'error', message: string, data?: any) {
+function log(level: "info" | "warn" | "error", message: string, data?: any) {
   const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
   if (data !== undefined) {
-    console[level === 'error' ? 'error' : 'log'](prefix, message, data);
+    console[level === "error" ? "error" : "log"](prefix, message, data);
   } else {
-    console[level === 'error' ? 'error' : 'log'](prefix, message);
+    console[level === "error" ? "error" : "log"](prefix, message);
   }
 }
 
@@ -932,15 +932,14 @@ function normalizeCourse(raw: RawCourse): Course {
 // -----------------------------------------------------------------------------
 
 function CoursesWidget() {
-  log('info', 'Widget mounting');
+  log("info", "Widget mounting");
 
-  const toolOutput = window.openai?.toolOutput;
-  const metadata = window.openai?.toolResponseMetadata;
-
-  const savedState = window.openai?.widgetState;
+  // ---------------------------------------------------------------------------
+  // Widget UI state
+  // ---------------------------------------------------------------------------
 
   const [state, setState] = useState<WidgetState>(
-    savedState || {
+    window.openai?.widgetState ?? {
       viewMode: "grid",
       sortBy: "created",
       filterBy: "all",
@@ -955,36 +954,70 @@ function CoursesWidget() {
   };
 
   // ---------------------------------------------------------------------------
+  // Get toolOutput when ChatGPT sets it
+  // ---------------------------------------------------------------------------
+
+  const [toolData, setToolData] = useState<{
+    toolOutput?: any;
+    metadata?: any;
+  }>({});
+
+  useEffect(() => {
+    if (
+      window.openai?.toolOutput !== undefined ||
+      window.openai?.toolResponseMetadata !== undefined
+    ) {
+      log("info", "Tool data updated");
+      setToolData({
+        toolOutput: window.openai?.toolOutput,
+        metadata: window.openai?.toolResponseMetadata,
+      });
+    }
+  }, [
+    window.openai?.toolOutput,
+    window.openai?.toolResponseMetadata,
+  ]);
+
+  const toolOutput = toolData.toolOutput;
+  const metadata = toolData.metadata;
+
+  // ---------------------------------------------------------------------------
   // Data extraction
   // ---------------------------------------------------------------------------
 
   let rawCourses: RawCourse[] = [];
 
   try {
-
-  if (Array.isArray(metadata?.courses)) rawCourses = metadata.courses;
-  else if (Array.isArray(toolOutput?.courses)) rawCourses = toolOutput.courses;
-  else if (Array.isArray(toolOutput)) rawCourses = toolOutput;
-
-    } catch (err) {
-    log('error', 'Failed while extracting courses', err);
+    if (Array.isArray(metadata?.courses)) {
+      rawCourses = metadata.courses;
+    } else if (Array.isArray(toolOutput?.courses)) {
+      rawCourses = toolOutput.courses;
+    } else if (Array.isArray(toolOutput?.result?.courses)) {
+      rawCourses = toolOutput.result.courses;
+    } else if (Array.isArray(toolOutput?.data?.courses)) {
+      rawCourses = toolOutput.data.courses;
+    } else if (Array.isArray(toolOutput)) {
+      rawCourses = toolOutput;
+    }
+  } catch (err) {
+    log("error", "Failed while extracting courses", err);
     rawCourses = [];
   }
 
-  log('info', `Raw courses received: ${rawCourses.length}`);
+  log("info", `Raw courses received: ${rawCourses.length}`);
 
   const courses = useMemo(() => {
     const normalized = rawCourses.map((c, idx) => {
       try {
         return normalizeCourse(c);
       } catch (e) {
-        log('warn', `Failed to normalize course at index ${idx}`, c);
+        log("warn", `Failed to normalize course at index ${idx}`, c);
         return normalizeCourse({});
       }
     });
-    log('info', `Normalized courses: ${normalized.length}`);
+    log("info", `Normalized courses: ${normalized.length}`);
     return normalized;
-  }, [rawCourses]);(() => rawCourses.map(normalizeCourse), [rawCourses]);
+  }, [rawCourses]);
 
   // ---------------------------------------------------------------------------
   // Filtering / sorting
@@ -1004,8 +1037,10 @@ function CoursesWidget() {
     }
 
     list.sort((a, b) => {
-      if (state.sortBy === "name") return a.courseName.localeCompare(b.courseName);
-      if (state.sortBy === "enrolled") return b.enrolledCount - a.enrolledCount;
+      if (state.sortBy === "name")
+        return a.courseName.localeCompare(b.courseName);
+      if (state.sortBy === "enrolled")
+        return b.enrolledCount - a.enrolledCount;
       return b.createdTime - a.createdTime;
     });
 
@@ -1016,9 +1051,10 @@ function CoursesWidget() {
   // Empty & loading states
   // ---------------------------------------------------------------------------
 
-  log('info', 'Render phase start');
+  log("info", "Render phase start");
 
-  if (!toolOutput && !metadata) {
+  // Not yet received results
+  if (toolOutput === undefined && metadata === undefined) {
     return <div style={styles.loading}>Loading courses…</div>;
   }
 
@@ -1026,7 +1062,13 @@ function CoursesWidget() {
     return (
       <div style={styles.empty}>
         <h3>No courses found</h3>
-        <button onClick={() => window.openai?.sendFollowUpMessage?.({ prompt: "Create a new course" })}>
+        <button
+          onClick={() =>
+            window.openai?.sendFollowUpMessage?.({
+              prompt: "Create a new course",
+            })
+          }
+        >
           Create Course
         </button>
       </div>
@@ -1034,14 +1076,20 @@ function CoursesWidget() {
   }
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Render UI
   // ---------------------------------------------------------------------------
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <h2>Courses ({filteredCourses.length})</h2>
-        <button onClick={() => window.openai?.sendFollowUpMessage?.({ prompt: "Create a new course" })}>
+        <button
+          onClick={() =>
+            window.openai?.sendFollowUpMessage?.({
+              prompt: "Create a new course",
+            })
+          }
+        >
           + Create
         </button>
       </header>
@@ -1050,27 +1098,50 @@ function CoursesWidget() {
         <input
           placeholder="Search"
           value={state.searchQuery}
-          onChange={(e) => updateState({ searchQuery: e.target.value })}
+          onChange={(e) =>
+            updateState({ searchQuery: e.target.value })
+          }
         />
 
-        <select value={state.filterBy} onChange={(e) => updateState({ filterBy: e.target.value as FilterBy })}>
+        <select
+          value={state.filterBy}
+          onChange={(e) =>
+            updateState({ filterBy: e.target.value as FilterBy })
+          }
+        >
           <option value="all">All</option>
           <option value="published">Published</option>
           <option value="draft">Draft</option>
         </select>
 
-        <select value={state.sortBy} onChange={(e) => updateState({ sortBy: e.target.value as SortBy })}>
+        <select
+          value={state.sortBy}
+          onChange={(e) =>
+            updateState({ sortBy: e.target.value as SortBy })
+          }
+        >
           <option value="created">Created</option>
           <option value="name">Name</option>
           <option value="enrolled">Enrolled</option>
         </select>
 
-        <button onClick={() => updateState({ viewMode: state.viewMode === "grid" ? "list" : "grid" })}>
+        <button
+          onClick={() =>
+            updateState({
+              viewMode:
+                state.viewMode === "grid" ? "list" : "grid",
+            })
+          }
+        >
           {state.viewMode === "grid" ? "☰" : "⊞"}
         </button>
       </div>
 
-      <div style={state.viewMode === "grid" ? styles.grid : styles.list}>
+      <div
+        style={
+          state.viewMode === "grid" ? styles.grid : styles.list
+        }
+      >
         {filteredCourses.map((course) => (
           <CourseCard
             key={course.courseId}
@@ -1101,15 +1172,30 @@ function CourseCard({
   viewMode: ViewMode;
   onClick: () => void;
 }) {
-  const gradient = gradients[course.courseName.length % gradients.length];
+  const gradient =
+    gradients[course.courseName.length % gradients.length];
 
   return (
-    <div style={{ ...styles.card, background: viewMode === "grid" ? "white" : undefined }} onClick={onClick}>
-      <div style={{ ...styles.thumb, background: gradient }}>📘</div>
+    <div
+      style={{
+        ...styles.card,
+        background: viewMode === "grid" ? "white" : undefined,
+      }}
+      onClick={onClick}
+    >
+      <div
+        style={{ ...styles.thumb, background: gradient }}
+      >
+        📘
+      </div>
       <div style={styles.cardBody}>
         <strong>{course.courseName}</strong>
-        {course.subTitle && <div style={styles.subtitle}>{course.subTitle}</div>}
-        <div style={styles.meta}>👥 {course.enrolledCount} · ⭐ {course.rating}</div>
+        {course.subTitle && (
+          <div style={styles.subtitle}>{course.subTitle}</div>
+        )}
+        <div style={styles.meta}>
+          👥 {course.enrolledCount} · ⭐ {course.rating}
+        </div>
       </div>
     </div>
   );
@@ -1127,12 +1213,31 @@ const gradients = [
 
 const styles: Record<string, React.CSSProperties> = {
   container: { padding: 16, fontFamily: "system-ui" },
-  header: { display: "flex", justifyContent: "space-between", marginBottom: 12 },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
   controls: { display: "flex", gap: 8, marginBottom: 12 },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+    gap: 12,
+  },
   list: { display: "flex", flexDirection: "column", gap: 8 },
-  card: { borderRadius: 8, boxShadow: "0 2px 6px rgba(0,0,0,.08)", cursor: "pointer", overflow: "hidden" },
-  thumb: { height: 100, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 },
+  card: {
+    borderRadius: 8,
+    boxShadow: "0 2px 6px rgba(0,0,0,.08)",
+    cursor: "pointer",
+    overflow: "hidden",
+  },
+  thumb: {
+    height: 100,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 32,
+  },
   cardBody: { padding: 12 },
   subtitle: { fontSize: 12, color: "#666" },
   meta: { fontSize: 12, marginTop: 6, color: "#555" },

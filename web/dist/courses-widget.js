@@ -24481,11 +24481,8 @@ function normalizeCourse(raw) {
 }
 function CoursesWidget() {
   log("info", "Widget mounting");
-  const toolOutput = window.openai?.toolOutput;
-  const metadata = window.openai?.toolResponseMetadata;
-  const savedState = window.openai?.widgetState;
   const [state, setState] = (0, import_react.useState)(
-    savedState || {
+    window.openai?.widgetState ?? {
       viewMode: "grid",
       sortBy: "created",
       filterBy: "all",
@@ -24497,14 +24494,34 @@ function CoursesWidget() {
     setState(next);
     window.openai?.setWidgetState?.(next);
   };
+  const [toolData, setToolData] = (0, import_react.useState)({});
+  (0, import_react.useEffect)(() => {
+    if (window.openai?.toolOutput !== void 0 || window.openai?.toolResponseMetadata !== void 0) {
+      log("info", "Tool data updated");
+      setToolData({
+        toolOutput: window.openai?.toolOutput,
+        metadata: window.openai?.toolResponseMetadata
+      });
+    }
+  }, [
+    window.openai?.toolOutput,
+    window.openai?.toolResponseMetadata
+  ]);
+  const toolOutput = toolData.toolOutput;
+  const metadata = toolData.metadata;
   let rawCourses = [];
   try {
-    if (Array.isArray(metadata?.courses))
+    if (Array.isArray(metadata?.courses)) {
       rawCourses = metadata.courses;
-    else if (Array.isArray(toolOutput?.courses))
+    } else if (Array.isArray(toolOutput?.courses)) {
       rawCourses = toolOutput.courses;
-    else if (Array.isArray(toolOutput))
+    } else if (Array.isArray(toolOutput?.result?.courses)) {
+      rawCourses = toolOutput.result.courses;
+    } else if (Array.isArray(toolOutput?.data?.courses)) {
+      rawCourses = toolOutput.data.courses;
+    } else if (Array.isArray(toolOutput)) {
       rawCourses = toolOutput;
+    }
   } catch (err) {
     log("error", "Failed while extracting courses", err);
     rawCourses = [];
@@ -24522,7 +24539,6 @@ function CoursesWidget() {
     log("info", `Normalized courses: ${normalized.length}`);
     return normalized;
   }, [rawCourses]);
-  () => rawCourses.map(normalizeCourse), [rawCourses];
   const filteredCourses = (0, import_react.useMemo)(() => {
     let list = [...courses];
     if (state.filterBy === "published")
@@ -24543,13 +24559,21 @@ function CoursesWidget() {
     return list;
   }, [courses, state]);
   log("info", "Render phase start");
-  if (!toolOutput && !metadata) {
+  if (toolOutput === void 0 && metadata === void 0) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.loading, children: "Loading courses\u2026" });
   }
   if (courses.length === 0) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.empty, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "No courses found" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => window.openai?.sendFollowUpMessage?.({ prompt: "Create a new course" }), children: "Create Course" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          onClick: () => window.openai?.sendFollowUpMessage?.({
+            prompt: "Create a new course"
+          }),
+          children: "Create Course"
+        }
+      )
     ] });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.container, children: [
@@ -24559,7 +24583,15 @@ function CoursesWidget() {
         filteredCourses.length,
         ")"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => window.openai?.sendFollowUpMessage?.({ prompt: "Create a new course" }), children: "+ Create" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          onClick: () => window.openai?.sendFollowUpMessage?.({
+            prompt: "Create a new course"
+          }),
+          children: "+ Create"
+        }
+      )
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.controls, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -24570,29 +24602,57 @@ function CoursesWidget() {
           onChange: (e) => updateState({ searchQuery: e.target.value })
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { value: state.filterBy, onChange: (e) => updateState({ filterBy: e.target.value }), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "all", children: "All" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "published", children: "Published" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "draft", children: "Draft" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { value: state.sortBy, onChange: (e) => updateState({ sortBy: e.target.value }), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "created", children: "Created" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "name", children: "Name" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "enrolled", children: "Enrolled" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => updateState({ viewMode: state.viewMode === "grid" ? "list" : "grid" }), children: state.viewMode === "grid" ? "\u2630" : "\u229E" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+        "select",
+        {
+          value: state.filterBy,
+          onChange: (e) => updateState({ filterBy: e.target.value }),
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "all", children: "All" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "published", children: "Published" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "draft", children: "Draft" })
+          ]
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+        "select",
+        {
+          value: state.sortBy,
+          onChange: (e) => updateState({ sortBy: e.target.value }),
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "created", children: "Created" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "name", children: "Name" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "enrolled", children: "Enrolled" })
+          ]
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          onClick: () => updateState({
+            viewMode: state.viewMode === "grid" ? "list" : "grid"
+          }),
+          children: state.viewMode === "grid" ? "\u2630" : "\u229E"
+        }
+      )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: state.viewMode === "grid" ? styles.grid : styles.list, children: filteredCourses.map((course) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-      CourseCard,
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "div",
       {
-        course,
-        viewMode: state.viewMode,
-        onClick: () => window.openai?.sendFollowUpMessage?.({
-          prompt: `Show details for course ${course.courseName}`
-        })
-      },
-      course.courseId
-    )) })
+        style: state.viewMode === "grid" ? styles.grid : styles.list,
+        children: filteredCourses.map((course) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          CourseCard,
+          {
+            course,
+            viewMode: state.viewMode,
+            onClick: () => window.openai?.sendFollowUpMessage?.({
+              prompt: `Show details for course ${course.courseName}`
+            })
+          },
+          course.courseId
+        ))
+      }
+    )
   ] });
 }
 function CourseCard({
@@ -24601,19 +24661,35 @@ function CourseCard({
   onClick
 }) {
   const gradient = gradients[course.courseName.length % gradients.length];
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { ...styles.card, background: viewMode === "grid" ? "white" : void 0 }, onClick, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { ...styles.thumb, background: gradient }, children: "\u{1F4D8}" }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.cardBody, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: course.courseName }),
-      course.subTitle && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.subtitle, children: course.subTitle }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.meta, children: [
-        "\u{1F465} ",
-        course.enrolledCount,
-        " \xB7 \u2B50 ",
-        course.rating
-      ] })
-    ] })
-  ] });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    "div",
+    {
+      style: {
+        ...styles.card,
+        background: viewMode === "grid" ? "white" : void 0
+      },
+      onClick,
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "div",
+          {
+            style: { ...styles.thumb, background: gradient },
+            children: "\u{1F4D8}"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.cardBody, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: course.courseName }),
+          course.subTitle && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.subtitle, children: course.subTitle }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.meta, children: [
+            "\u{1F465} ",
+            course.enrolledCount,
+            " \xB7 \u2B50 ",
+            course.rating
+          ] })
+        ] })
+      ]
+    }
+  );
 }
 var gradients = [
   "linear-gradient(135deg,#ffecd2,#fcb69f)",
@@ -24622,12 +24698,31 @@ var gradients = [
 ];
 var styles = {
   container: { padding: 16, fontFamily: "system-ui" },
-  header: { display: "flex", justifyContent: "space-between", marginBottom: 12 },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 12
+  },
   controls: { display: "flex", gap: 8, marginBottom: 12 },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+    gap: 12
+  },
   list: { display: "flex", flexDirection: "column", gap: 8 },
-  card: { borderRadius: 8, boxShadow: "0 2px 6px rgba(0,0,0,.08)", cursor: "pointer", overflow: "hidden" },
-  thumb: { height: 100, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 },
+  card: {
+    borderRadius: 8,
+    boxShadow: "0 2px 6px rgba(0,0,0,.08)",
+    cursor: "pointer",
+    overflow: "hidden"
+  },
+  thumb: {
+    height: 100,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 32
+  },
   cardBody: { padding: 12 },
   subtitle: { fontSize: 12, color: "#666" },
   meta: { fontSize: 12, marginTop: 6, color: "#555" },
