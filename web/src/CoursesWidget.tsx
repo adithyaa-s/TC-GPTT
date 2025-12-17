@@ -840,378 +840,504 @@
  * Logs are intentionally minimal and safe for production MCP widgets.
  */
 
-import React, { useState, useMemo } from "react";
+
+// V1
+
+
+// import React, { useState, useMemo } from "react";
+// import { createRoot } from "react-dom/client";
+// import { useSyncExternalStore } from "react";
+
+// // ----------------------------------------------
+// // Hook to subscribe to `window.openai` globals
+// // as described in the official Apps SDK docs
+// // ----------------------------------------------
+
+// const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+
+// function useOpenAiGlobal(key) {
+//   return useSyncExternalStore(
+//     (onChange) => {
+//       const handler = (event) => {
+//         const value = event.detail.globals?.[key];
+//         if (value !== undefined) {
+//           onChange();
+//         }
+//       };
+//       window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
+//         passive: true,
+//       });
+//       return () => {
+//         window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+//       };
+//     },
+//     () => window.openai?.[key],
+//     () => window.openai?.[key]
+//   );
+// }
+
+// // ----------------------------------------------
+// // Types
+// // ----------------------------------------------
+
+// type ViewMode = "grid" | "list";
+// type SortBy = "created" | "name" | "enrolled";
+// type FilterBy = "all" | "draft" | "published";
+
+// interface RawCourse {
+//   id?: string;
+//   courseId?: string;
+//   name?: string;
+//   courseName?: string;
+//   subTitle?: string;
+//   description?: string;
+//   status?: string;
+//   publishStatus?: string;
+//   enrolled?: number;
+//   enrolledCount?: number;
+//   rating?: number;
+//   createdTime?: string | number;
+// }
+
+// interface Course {
+//   courseId: string;
+//   courseName: string;
+//   subTitle: string;
+//   publishStatus: "PUBLISHED" | "DRAFT" | "NONE";
+//   enrolledCount: number;
+//   rating: number;
+//   createdTime: number;
+// }
+
+// interface WidgetState {
+//   viewMode: ViewMode;
+//   sortBy: SortBy;
+//   filterBy: FilterBy;
+//   searchQuery: string;
+// }
+
+// // ----------------------------------------------
+// // Helpers
+// // ----------------------------------------------
+
+// function log(level, message, data) {
+//   const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
+//   if (data !== undefined) {
+//     console[level === "error" ? "error" : "log"](prefix, message, data);
+//   } else {
+//     console[level === "error" ? "error" : "log"](prefix, message);
+//   }
+// }
+
+// function normalizeCourse(raw: RawCourse): Course {
+//   return {
+//     courseId: raw.courseId || raw.id || crypto.randomUUID(),
+//     courseName: raw.courseName || raw.name || "Untitled Course",
+//     subTitle: raw.subTitle || "",
+//     publishStatus:
+//       (raw.publishStatus || raw.status || "NONE") === "PUBLISHED"
+//         ? "PUBLISHED"
+//         : "DRAFT",
+//     enrolledCount: raw.enrolledCount ?? raw.enrolled ?? 0,
+//     rating: raw.rating ?? 0,
+//     createdTime: Number(raw.createdTime) || 0,
+//   };
+// }
+
+// // ----------------------------------------------
+// // Main Widget
+// // ----------------------------------------------
+
+// function CoursesWidget() {
+//   log("info", "Widget mounting");
+
+//   // --- Subscribe to MCP data via hooks ---
+//   const toolOutput = useOpenAiGlobal("toolOutput");
+//   const metadata = useOpenAiGlobal("toolResponseMetadata");
+
+//   log("info", "Received toolOutput snapshot", toolOutput);
+
+//   // --- Widget UI state (persistent) ---
+//   const [state, setState] = useState<WidgetState>(
+//     window.openai?.widgetState ?? {
+//       viewMode: "grid",
+//       sortBy: "created",
+//       filterBy: "all",
+//       searchQuery: "",
+//     }
+//   );
+
+//   const updateState = (patch: Partial<WidgetState>) => {
+//     const next = { ...state, ...patch };
+//     setState(next);
+//     window.openai?.setWidgetState?.(next);
+//   };
+
+//   // --- Data extraction: read courses from top-level `toolOutput.courses` ---
+//   let rawCourses: RawCourse[] = [];
+
+//   if (Array.isArray(toolOutput?.courses)) {
+//     rawCourses = toolOutput.courses;
+//   }
+
+//   log("info", `Raw courses received: ${rawCourses.length}`);
+
+//   const courses = useMemo(() => {
+//     const normalized = rawCourses.map((c, idx) => {
+//       try {
+//         return normalizeCourse(c);
+//       } catch (e) {
+//         log("warn", `Failed to normalize course at index ${idx}`, c);
+//         return normalizeCourse({});
+//       }
+//     });
+//     log("info", `Normalized courses: ${normalized.length}`);
+//     return normalized;
+//   }, [rawCourses]);
+
+//   // --- Filtering / sorting logic ---
+//   const filteredCourses = useMemo(() => {
+//     let list = [...courses];
+
+//     if (state.filterBy === "published")
+//       list = list.filter((c) => c.publishStatus === "PUBLISHED");
+//     if (state.filterBy === "draft")
+//       list = list.filter((c) => c.publishStatus !== "PUBLISHED");
+
+//     if (state.searchQuery) {
+//       const q = state.searchQuery.toLowerCase();
+//       list = list.filter((c) =>
+//         c.courseName.toLowerCase().includes(q)
+//       );
+//     }
+
+//     list.sort((a, b) => {
+//       if (state.sortBy === "name")
+//         return a.courseName.localeCompare(b.courseName);
+//       if (state.sortBy === "enrolled")
+//         return b.enrolledCount - a.enrolledCount;
+//       return b.createdTime - a.createdTime;
+//     });
+
+//     return list;
+//   }, [courses, state]);
+
+//   log("info", "Render phase start");
+
+//   // --- Loading / empty states ---
+//   if (toolOutput === undefined && metadata === undefined) {
+//     return <div style={styles.loading}>Loading courses…</div>;
+//   }
+
+//   if (filteredCourses.length === 0) {
+//     return (
+//       <div style={styles.empty}>
+//         <h3>No courses found</h3>
+//         <button
+//           onClick={() =>
+//             window.openai?.sendFollowUpMessage?.({
+//               prompt: "Create a new course",
+//             })
+//           }
+//         >
+//           Create Course
+//         </button>
+//       </div>
+//     );
+//   }
+
+//   // --- Final render ---
+//   return (
+//     <div style={styles.container}>
+//       <header style={styles.header}>
+//         <h2>Courses ({filteredCourses.length})</h2>
+//         <button
+//           onClick={() =>
+//             window.openai?.sendFollowUpMessage?.({
+//               prompt: "Create a new course",
+//             })
+//           }
+//         >
+//           + Create
+//         </button>
+//       </header>
+
+//       <div style={styles.controls}>
+//         <input
+//           placeholder="Search"
+//           value={state.searchQuery}
+//           onChange={(e) =>
+//             updateState({ searchQuery: e.target.value })
+//           }
+//         />
+
+//         <select
+//           value={state.filterBy}
+//           onChange={(e) =>
+//             updateState({ filterBy: e.target.value as FilterBy })
+//           }
+//         >
+//           <option value="all">All</option>
+//           <option value="published">Published</option>
+//           <option value="draft">Draft</option>
+//         </select>
+
+//         <select
+//           value={state.sortBy}
+//           onChange={(e) =>
+//             updateState({ sortBy: e.target.value as SortBy })
+//           }
+//         >
+//           <option value="created">Created</option>
+//           <option value="name">Name</option>
+//           <option value="enrolled">Enrolled</option>
+//         </select>
+
+//         <button
+//           onClick={() =>
+//             updateState({
+//               viewMode:
+//                 state.viewMode === "grid" ? "list" : "grid",
+//             })
+//           }
+//         >
+//           {state.viewMode === "grid" ? "☰" : "⊞"}
+//         </button>
+//       </div>
+
+//       <div
+//         style={
+//           state.viewMode === "grid" ? styles.grid : styles.list
+//         }
+//       >
+//         {filteredCourses.map((course) => (
+//           <CourseCard
+//             key={course.courseId}
+//             course={course}
+//             viewMode={state.viewMode}
+//             onClick={() =>
+//               window.openai?.sendFollowUpMessage?.({
+//                 prompt: `Show details for course ${course.courseName}`,
+//               })
+//             }
+//           />
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
+
+// // ----------------------------------------------
+// // CourseCard component
+// // ----------------------------------------------
+
+// function CourseCard({
+//   course,
+//   viewMode,
+//   onClick,
+// }: {
+//   course: Course;
+//   viewMode: ViewMode;
+//   onClick: () => void;
+// }) {
+//   const gradient =
+//     gradients[course.courseName.length % gradients.length];
+
+//   return (
+//     <div
+//       style={{
+//         ...styles.card,
+//         background: viewMode === "grid" ? "white" : undefined,
+//       }}
+//       onClick={onClick}
+//     >
+//       <div
+//         style={{ ...styles.thumb, background: gradient }}
+//       >
+//         📘
+//       </div>
+//       <div style={styles.cardBody}>
+//         <strong>{course.courseName}</strong>
+//         {course.subTitle && (
+//           <div style={styles.subtitle}>{course.subTitle}</div>
+//         )}
+//         <div style={styles.meta}>
+//           👥 {course.enrolledCount} · ⭐ {course.rating}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+// // ----------------------------------------------
+// // Styles
+// // ----------------------------------------------
+
+// const gradients = [
+//   "linear-gradient(135deg,#ffecd2,#fcb69f)",
+//   "linear-gradient(135deg,#a8edea,#fed6e3)",
+//   "linear-gradient(135deg,#fbc2eb,#a6c1ee)",
+// ];
+
+// const styles: Record<string, React.CSSProperties> = {
+//   container: { padding: 16, fontFamily: "system-ui" },
+//   header: {
+//     display: "flex",
+//     justifyContent: "space-between",
+//     marginBottom: 12,
+//   },
+//   controls: { display: "flex", gap: 8, marginBottom: 12 },
+//   grid: {
+//     display: "grid",
+//     gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+//     gap: 12,
+//   },
+//   list: { display: "flex", flexDirection: "column", gap: 8 },
+//   card: {
+//     borderRadius: 8,
+//     boxShadow: "0 2px 6px rgba(0,0,0,.08)",
+//     cursor: "pointer",
+//     overflow: "hidden",
+//   },
+//   thumb: {
+//     height: 100,
+//     display: "flex",
+//     alignItems: "center",
+//     justifyContent: "center",
+//     fontSize: 32,
+//   },
+//   cardBody: { padding: 12 },
+//   subtitle: { fontSize: 12, color: "#666" },
+//   meta: { fontSize: 12, marginTop: 6, color: "#555" },
+//   loading: { padding: 40, textAlign: "center" },
+//   empty: { padding: 40, textAlign: "center" },
+// };
+
+// // ----------------------------------------------
+// // Mount
+// // ----------------------------------------------
+
+// const root = document.getElementById("root");
+// if (root) createRoot(root).render(<CoursesWidget />);
+
+// export default CoursesWidget;
+
+
+// V2
+
+// import React, { useEffect } from "react";
+// import { createRoot } from "react-dom/client";
+// import { useOpenAiGlobal } from "./openAiGlobalHook";
+// import CourseList from "./CourseList";
+// import CourseDetails from "./CourseDetails";
+
+// export default function CoursesWidget() {
+//   const toolOutput = useOpenAiGlobal("toolOutput");
+//   const metadata = useOpenAiGlobal("toolResponseMetadata");
+//   const [widgetState, setWidgetState] = React.useState(
+//     window.openai?.widgetState ?? {}
+//   );
+
+//   // Navigation stack
+//   const navStack = widgetState.navStack ?? ["CourseList"];
+
+//   const push = (screen, params) => {
+//     const next = { ...widgetState, navStack: [...navStack, screen], params };
+//     setWidgetState(next);
+//     window.openai?.setWidgetState(next);
+//   };
+
+//   const pop = () => {
+//     if (navStack.length > 1) {
+//       const newStack = navStack.slice(0, -1);
+//       setWidgetState({ ...widgetState, navStack: newStack });
+//       window.openai?.setWidgetState({ ...widgetState, navStack: newStack });
+//     }
+//   };
+
+//   useEffect(() => {
+//     // Ensure toolOutput arrives
+//   }, [toolOutput]);
+
+//   if (!toolOutput) {
+//     return <div>Loading...</div>;
+//   }
+
+//   const current = navStack[navStack.length - 1];
+
+//   return (
+//     <>
+//       {current === "CourseList" && (
+//         <CourseList
+//           courses={toolOutput.courses}
+//           onSelect={(c) => push("CourseDetails", { course: c })}
+//         />
+//       )}
+//       {current === "CourseDetails" && (
+//         <CourseDetails
+//           course={widgetState.params.course}
+//           goBack={pop}
+//           push={push}
+//         />
+//       )}
+//     </>
+//   );
+// }
+
+// const root = document.getElementById("root");
+// if (root) createRoot(root).render(<CoursesWidget />);
+
+
+// V3
+
+// src/CoursesWidget.tsx
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { useSyncExternalStore } from "react";
 
-// ----------------------------------------------
-// Hook to subscribe to `window.openai` globals
-// as described in the official Apps SDK docs
-// ----------------------------------------------
-
-const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
-
-function useOpenAiGlobal(key) {
-  return useSyncExternalStore(
-    (onChange) => {
-      const handler = (event) => {
-        const value = event.detail.globals?.[key];
-        if (value !== undefined) {
-          onChange();
-        }
-      };
-      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
-        passive: true,
-      });
-      return () => {
-        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
-      };
-    },
-    () => window.openai?.[key],
-    () => window.openai?.[key]
-  );
-}
-
-// ----------------------------------------------
-// Types
-// ----------------------------------------------
-
-type ViewMode = "grid" | "list";
-type SortBy = "created" | "name" | "enrolled";
-type FilterBy = "all" | "draft" | "published";
-
-interface RawCourse {
-  id?: string;
-  courseId?: string;
-  name?: string;
-  courseName?: string;
-  subTitle?: string;
-  description?: string;
-  status?: string;
-  publishStatus?: string;
-  enrolled?: number;
-  enrolledCount?: number;
-  rating?: number;
-  createdTime?: string | number;
-}
-
-interface Course {
-  courseId: string;
-  courseName: string;
-  subTitle: string;
-  publishStatus: "PUBLISHED" | "DRAFT" | "NONE";
-  enrolledCount: number;
-  rating: number;
-  createdTime: number;
-}
-
-interface WidgetState {
-  viewMode: ViewMode;
-  sortBy: SortBy;
-  filterBy: FilterBy;
-  searchQuery: string;
-}
-
-// ----------------------------------------------
-// Helpers
-// ----------------------------------------------
-
-function log(level, message, data) {
-  const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
-  if (data !== undefined) {
-    console[level === "error" ? "error" : "log"](prefix, message, data);
-  } else {
-    console[level === "error" ? "error" : "log"](prefix, message);
-  }
-}
-
-function normalizeCourse(raw: RawCourse): Course {
-  return {
-    courseId: raw.courseId || raw.id || crypto.randomUUID(),
-    courseName: raw.courseName || raw.name || "Untitled Course",
-    subTitle: raw.subTitle || "",
-    publishStatus:
-      (raw.publishStatus || raw.status || "NONE") === "PUBLISHED"
-        ? "PUBLISHED"
-        : "DRAFT",
-    enrolledCount: raw.enrolledCount ?? raw.enrolled ?? 0,
-    rating: raw.rating ?? 0,
-    createdTime: Number(raw.createdTime) || 0,
-  };
-}
-
-// ----------------------------------------------
-// Main Widget
-// ----------------------------------------------
-
-function CoursesWidget() {
-  log("info", "Widget mounting");
-
-  // --- Subscribe to MCP data via hooks ---
-  const toolOutput = useOpenAiGlobal("toolOutput");
-  const metadata = useOpenAiGlobal("toolResponseMetadata");
-
-  log("info", "Received toolOutput snapshot", toolOutput);
-
-  // --- Widget UI state (persistent) ---
-  const [state, setState] = useState<WidgetState>(
-    window.openai?.widgetState ?? {
-      viewMode: "grid",
-      sortBy: "created",
-      filterBy: "all",
-      searchQuery: "",
-    }
-  );
-
-  const updateState = (patch: Partial<WidgetState>) => {
-    const next = { ...state, ...patch };
-    setState(next);
-    window.openai?.setWidgetState?.(next);
-  };
-
-  // --- Data extraction: read courses from top-level `toolOutput.courses` ---
-  let rawCourses: RawCourse[] = [];
-
-  if (Array.isArray(toolOutput?.courses)) {
-    rawCourses = toolOutput.courses;
-  }
-
-  log("info", `Raw courses received: ${rawCourses.length}`);
-
-  const courses = useMemo(() => {
-    const normalized = rawCourses.map((c, idx) => {
-      try {
-        return normalizeCourse(c);
-      } catch (e) {
-        log("warn", `Failed to normalize course at index ${idx}`, c);
-        return normalizeCourse({});
-      }
-    });
-    log("info", `Normalized courses: ${normalized.length}`);
-    return normalized;
-  }, [rawCourses]);
-
-  // --- Filtering / sorting logic ---
-  const filteredCourses = useMemo(() => {
-    let list = [...courses];
-
-    if (state.filterBy === "published")
-      list = list.filter((c) => c.publishStatus === "PUBLISHED");
-    if (state.filterBy === "draft")
-      list = list.filter((c) => c.publishStatus !== "PUBLISHED");
-
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
-      list = list.filter((c) =>
-        c.courseName.toLowerCase().includes(q)
-      );
-    }
-
-    list.sort((a, b) => {
-      if (state.sortBy === "name")
-        return a.courseName.localeCompare(b.courseName);
-      if (state.sortBy === "enrolled")
-        return b.enrolledCount - a.enrolledCount;
-      return b.createdTime - a.createdTime;
-    });
-
-    return list;
-  }, [courses, state]);
-
-  log("info", "Render phase start");
-
-  // --- Loading / empty states ---
-  if (toolOutput === undefined && metadata === undefined) {
-    return <div style={styles.loading}>Loading courses…</div>;
-  }
-
-  if (filteredCourses.length === 0) {
-    return (
-      <div style={styles.empty}>
-        <h3>No courses found</h3>
-        <button
-          onClick={() =>
-            window.openai?.sendFollowUpMessage?.({
-              prompt: "Create a new course",
-            })
-          }
-        >
-          Create Course
-        </button>
-      </div>
-    );
-  }
-
-  // --- Final render ---
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h2>Courses ({filteredCourses.length})</h2>
-        <button
-          onClick={() =>
-            window.openai?.sendFollowUpMessage?.({
-              prompt: "Create a new course",
-            })
-          }
-        >
-          + Create
-        </button>
-      </header>
-
-      <div style={styles.controls}>
-        <input
-          placeholder="Search"
-          value={state.searchQuery}
-          onChange={(e) =>
-            updateState({ searchQuery: e.target.value })
-          }
-        />
-
-        <select
-          value={state.filterBy}
-          onChange={(e) =>
-            updateState({ filterBy: e.target.value as FilterBy })
-          }
-        >
-          <option value="all">All</option>
-          <option value="published">Published</option>
-          <option value="draft">Draft</option>
-        </select>
-
-        <select
-          value={state.sortBy}
-          onChange={(e) =>
-            updateState({ sortBy: e.target.value as SortBy })
-          }
-        >
-          <option value="created">Created</option>
-          <option value="name">Name</option>
-          <option value="enrolled">Enrolled</option>
-        </select>
-
-        <button
-          onClick={() =>
-            updateState({
-              viewMode:
-                state.viewMode === "grid" ? "list" : "grid",
-            })
-          }
-        >
-          {state.viewMode === "grid" ? "☰" : "⊞"}
-        </button>
-      </div>
-
-      <div
-        style={
-          state.viewMode === "grid" ? styles.grid : styles.list
-        }
-      >
-        {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.courseId}
-            course={course}
-            viewMode={state.viewMode}
-            onClick={() =>
-              window.openai?.sendFollowUpMessage?.({
-                prompt: `Show details for course ${course.courseName}`,
-              })
-            }
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------
-// CourseCard component
-// ----------------------------------------------
-
-function CourseCard({
-  course,
-  viewMode,
-  onClick,
-}: {
-  course: Course;
-  viewMode: ViewMode;
-  onClick: () => void;
-}) {
-  const gradient =
-    gradients[course.courseName.length % gradients.length];
-
-  return (
-    <div
-      style={{
-        ...styles.card,
-        background: viewMode === "grid" ? "white" : undefined,
-      }}
-      onClick={onClick}
-    >
-      <div
-        style={{ ...styles.thumb, background: gradient }}
-      >
-        📘
-      </div>
-      <div style={styles.cardBody}>
-        <strong>{course.courseName}</strong>
-        {course.subTitle && (
-          <div style={styles.subtitle}>{course.subTitle}</div>
-        )}
-        <div style={styles.meta}>
-          👥 {course.enrolledCount} · ⭐ {course.rating}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------
-// Styles
-// ----------------------------------------------
-
-const gradients = [
-  "linear-gradient(135deg,#ffecd2,#fcb69f)",
-  "linear-gradient(135deg,#a8edea,#fed6e3)",
-  "linear-gradient(135deg,#fbc2eb,#a6c1ee)",
-];
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { padding: 16, fontFamily: "system-ui" },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  controls: { display: "flex", gap: 8, marginBottom: 12 },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
-    gap: 12,
-  },
-  list: { display: "flex", flexDirection: "column", gap: 8 },
-  card: {
-    borderRadius: 8,
-    boxShadow: "0 2px 6px rgba(0,0,0,.08)",
-    cursor: "pointer",
-    overflow: "hidden",
-  },
-  thumb: {
-    height: 100,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 32,
-  },
-  cardBody: { padding: 12 },
-  subtitle: { fontSize: 12, color: "#666" },
-  meta: { fontSize: 12, marginTop: 6, color: "#555" },
-  loading: { padding: 40, textAlign: "center" },
-  empty: { padding: 40, textAlign: "center" },
+type Course = {
+  id: string;
+  name: string;
 };
 
-// ----------------------------------------------
-// Mount
-// ----------------------------------------------
+declare global {
+  interface Window {
+    openai?: {
+      toolOutput?: any;
+    };
+  }
+}
+
+function CoursesWidget() {
+  const [courses, setCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    const output = window.openai?.toolOutput;
+    if (output?.courses) {
+      setCourses(output.courses);
+    }
+  }, []);
+
+  return (
+    <div style={{ padding: 16 }}>
+      <h2>Courses ({courses.length})</h2>
+
+      {courses.map((c) => (
+        <div
+          key={c.id}
+          style={{
+            padding: 12,
+            marginBottom: 8,
+            borderRadius: 8,
+            background: "#fff",
+            boxShadow: "0 1px 4px rgba(0,0,0,.1)",
+          }}
+        >
+          {c.name}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const root = document.getElementById("root");
 if (root) createRoot(root).render(<CoursesWidget />);

@@ -1,0 +1,4 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "@openai/apps-sdk-ui/css";
+@import "tailwindcss/utilities";

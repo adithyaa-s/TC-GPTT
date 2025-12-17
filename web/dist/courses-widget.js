@@ -1095,7 +1095,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useRef(initialValue);
         }
-        function useEffect(create, deps) {
+        function useEffect2(create, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useEffect(create, deps);
         }
@@ -1111,7 +1111,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useCallback(callback, deps);
         }
-        function useMemo2(create, deps) {
+        function useMemo(create, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useMemo(create, deps);
         }
@@ -1137,7 +1137,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useId();
         }
-        function useSyncExternalStore2(subscribe, getSnapshot, getServerSnapshot) {
+        function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
         }
@@ -1878,16 +1878,16 @@ var require_react_development = __commonJS({
         exports.useContext = useContext;
         exports.useDebugValue = useDebugValue;
         exports.useDeferredValue = useDeferredValue;
-        exports.useEffect = useEffect;
+        exports.useEffect = useEffect2;
         exports.useId = useId;
         exports.useImperativeHandle = useImperativeHandle;
         exports.useInsertionEffect = useInsertionEffect;
         exports.useLayoutEffect = useLayoutEffect;
-        exports.useMemo = useMemo2;
+        exports.useMemo = useMemo;
         exports.useReducer = useReducer;
         exports.useRef = useRef;
         exports.useState = useState2;
-        exports.useSyncExternalStore = useSyncExternalStore2;
+        exports.useSyncExternalStore = useSyncExternalStore;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop === "function") {
@@ -4485,15 +4485,15 @@ var require_react_dom_development = __commonJS({
           };
         }
         var warnValidStyle$1 = warnValidStyle;
-        function createDangerousStringForStyles(styles2) {
+        function createDangerousStringForStyles(styles) {
           {
             var serialized = "";
             var delimiter = "";
-            for (var styleName in styles2) {
-              if (!styles2.hasOwnProperty(styleName)) {
+            for (var styleName in styles) {
+              if (!styles.hasOwnProperty(styleName)) {
                 continue;
               }
-              var styleValue = styles2[styleName];
+              var styleValue = styles[styleName];
               if (styleValue != null) {
                 var isCustomProperty = styleName.indexOf("--") === 0;
                 serialized += delimiter + (isCustomProperty ? styleName : hyphenateStyleName(styleName)) + ":";
@@ -4504,19 +4504,19 @@ var require_react_dom_development = __commonJS({
             return serialized || null;
           }
         }
-        function setValueForStyles(node, styles2) {
+        function setValueForStyles(node, styles) {
           var style2 = node.style;
-          for (var styleName in styles2) {
-            if (!styles2.hasOwnProperty(styleName)) {
+          for (var styleName in styles) {
+            if (!styles.hasOwnProperty(styleName)) {
               continue;
             }
             var isCustomProperty = styleName.indexOf("--") === 0;
             {
               if (!isCustomProperty) {
-                warnValidStyle$1(styleName, styles2[styleName]);
+                warnValidStyle$1(styleName, styles[styleName]);
               }
             }
-            var styleValue = dangerousStyleValue(styleName, styles2[styleName], isCustomProperty);
+            var styleValue = dangerousStyleValue(styleName, styles[styleName], isCustomProperty);
             if (styleName === "float") {
               styleName = "cssFloat";
             }
@@ -4530,9 +4530,9 @@ var require_react_dom_development = __commonJS({
         function isValueEmpty(value) {
           return value == null || typeof value === "boolean" || value === "";
         }
-        function expandShorthandMap(styles2) {
+        function expandShorthandMap(styles) {
           var expanded = {};
-          for (var key in styles2) {
+          for (var key in styles) {
             var longhands = shorthandToLonghand[key] || [key];
             for (var i = 0; i < longhands.length; i++) {
               expanded[longhands[i]] = key;
@@ -6345,14 +6345,14 @@ var require_react_dom_development = __commonJS({
           16
         );
         var clz32 = Math.clz32 ? Math.clz32 : clz32Fallback;
-        var log2 = Math.log;
+        var log = Math.log;
         var LN2 = Math.LN2;
         function clz32Fallback(x) {
           var asUint = x >>> 0;
           if (asUint === 0) {
             return 32;
           }
-          return 31 - (log2(asUint) / LN2 | 0) | 0;
+          return 31 - (log(asUint) / LN2 | 0) | 0;
         }
         var TotalLanes = 31;
         var NoLanes = (
@@ -24459,275 +24459,37 @@ var require_jsx_runtime = __commonJS({
 // src/CoursesWidget.tsx
 var import_react = __toESM(require_react());
 var import_client = __toESM(require_client());
-var import_react2 = __toESM(require_react());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
-var SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
-function useOpenAiGlobal(key) {
-  return (0, import_react2.useSyncExternalStore)(
-    (onChange) => {
-      const handler = (event) => {
-        const value = event.detail.globals?.[key];
-        if (value !== void 0) {
-          onChange();
-        }
-      };
-      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
-        passive: true
-      });
-      return () => {
-        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
-      };
-    },
-    () => window.openai?.[key],
-    () => window.openai?.[key]
-  );
-}
-function log(level, message, data) {
-  const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
-  if (data !== void 0) {
-    console[level === "error" ? "error" : "log"](prefix, message, data);
-  } else {
-    console[level === "error" ? "error" : "log"](prefix, message);
-  }
-}
-function normalizeCourse(raw) {
-  return {
-    courseId: raw.courseId || raw.id || crypto.randomUUID(),
-    courseName: raw.courseName || raw.name || "Untitled Course",
-    subTitle: raw.subTitle || "",
-    publishStatus: (raw.publishStatus || raw.status || "NONE") === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
-    enrolledCount: raw.enrolledCount ?? raw.enrolled ?? 0,
-    rating: raw.rating ?? 0,
-    createdTime: Number(raw.createdTime) || 0
-  };
-}
 function CoursesWidget() {
-  log("info", "Widget mounting");
-  const toolOutput = useOpenAiGlobal("toolOutput");
-  const metadata = useOpenAiGlobal("toolResponseMetadata");
-  log("info", "Received toolOutput snapshot", toolOutput);
-  const [state, setState] = (0, import_react.useState)(
-    window.openai?.widgetState ?? {
-      viewMode: "grid",
-      sortBy: "created",
-      filterBy: "all",
-      searchQuery: ""
+  const [courses, setCourses] = (0, import_react.useState)([]);
+  (0, import_react.useEffect)(() => {
+    const output = window.openai?.toolOutput;
+    if (output?.courses) {
+      setCourses(output.courses);
     }
-  );
-  const updateState = (patch) => {
-    const next = { ...state, ...patch };
-    setState(next);
-    window.openai?.setWidgetState?.(next);
-  };
-  let rawCourses = [];
-  if (Array.isArray(toolOutput?.courses)) {
-    rawCourses = toolOutput.courses;
-  }
-  log("info", `Raw courses received: ${rawCourses.length}`);
-  const courses = (0, import_react.useMemo)(() => {
-    const normalized = rawCourses.map((c, idx) => {
-      try {
-        return normalizeCourse(c);
-      } catch (e) {
-        log("warn", `Failed to normalize course at index ${idx}`, c);
-        return normalizeCourse({});
-      }
-    });
-    log("info", `Normalized courses: ${normalized.length}`);
-    return normalized;
-  }, [rawCourses]);
-  const filteredCourses = (0, import_react.useMemo)(() => {
-    let list = [...courses];
-    if (state.filterBy === "published")
-      list = list.filter((c) => c.publishStatus === "PUBLISHED");
-    if (state.filterBy === "draft")
-      list = list.filter((c) => c.publishStatus !== "PUBLISHED");
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
-      list = list.filter(
-        (c) => c.courseName.toLowerCase().includes(q)
-      );
-    }
-    list.sort((a, b) => {
-      if (state.sortBy === "name")
-        return a.courseName.localeCompare(b.courseName);
-      if (state.sortBy === "enrolled")
-        return b.enrolledCount - a.enrolledCount;
-      return b.createdTime - a.createdTime;
-    });
-    return list;
-  }, [courses, state]);
-  log("info", "Render phase start");
-  if (toolOutput === void 0 && metadata === void 0) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.loading, children: "Loading courses\u2026" });
-  }
-  if (filteredCourses.length === 0) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.empty, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "No courses found" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          onClick: () => window.openai?.sendFollowUpMessage?.({
-            prompt: "Create a new course"
-          }),
-          children: "Create Course"
-        }
-      )
-    ] });
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.container, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { style: styles.header, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h2", { children: [
-        "Courses (",
-        filteredCourses.length,
-        ")"
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          onClick: () => window.openai?.sendFollowUpMessage?.({
-            prompt: "Create a new course"
-          }),
-          children: "+ Create"
-        }
-      )
+  }, []);
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: 16 }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h2", { children: [
+      "Courses (",
+      courses.length,
+      ")"
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.controls, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "input",
-        {
-          placeholder: "Search",
-          value: state.searchQuery,
-          onChange: (e) => updateState({ searchQuery: e.target.value })
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-        "select",
-        {
-          value: state.filterBy,
-          onChange: (e) => updateState({ filterBy: e.target.value }),
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "all", children: "All" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "published", children: "Published" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "draft", children: "Draft" })
-          ]
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-        "select",
-        {
-          value: state.sortBy,
-          onChange: (e) => updateState({ sortBy: e.target.value }),
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "created", children: "Created" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "name", children: "Name" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "enrolled", children: "Enrolled" })
-          ]
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          onClick: () => updateState({
-            viewMode: state.viewMode === "grid" ? "list" : "grid"
-          }),
-          children: state.viewMode === "grid" ? "\u2630" : "\u229E"
-        }
-      )
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    courses.map((c) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
       "div",
       {
-        style: state.viewMode === "grid" ? styles.grid : styles.list,
-        children: filteredCourses.map((course) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          CourseCard,
-          {
-            course,
-            viewMode: state.viewMode,
-            onClick: () => window.openai?.sendFollowUpMessage?.({
-              prompt: `Show details for course ${course.courseName}`
-            })
-          },
-          course.courseId
-        ))
-      }
-    )
+        style: {
+          padding: 12,
+          marginBottom: 8,
+          borderRadius: 8,
+          background: "#fff",
+          boxShadow: "0 1px 4px rgba(0,0,0,.1)"
+        },
+        children: c.name
+      },
+      c.id
+    ))
   ] });
 }
-function CourseCard({
-  course,
-  viewMode,
-  onClick
-}) {
-  const gradient = gradients[course.courseName.length % gradients.length];
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-    "div",
-    {
-      style: {
-        ...styles.card,
-        background: viewMode === "grid" ? "white" : void 0
-      },
-      onClick,
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "div",
-          {
-            style: { ...styles.thumb, background: gradient },
-            children: "\u{1F4D8}"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.cardBody, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: course.courseName }),
-          course.subTitle && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: styles.subtitle, children: course.subTitle }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: styles.meta, children: [
-            "\u{1F465} ",
-            course.enrolledCount,
-            " \xB7 \u2B50 ",
-            course.rating
-          ] })
-        ] })
-      ]
-    }
-  );
-}
-var gradients = [
-  "linear-gradient(135deg,#ffecd2,#fcb69f)",
-  "linear-gradient(135deg,#a8edea,#fed6e3)",
-  "linear-gradient(135deg,#fbc2eb,#a6c1ee)"
-];
-var styles = {
-  container: { padding: 16, fontFamily: "system-ui" },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 12
-  },
-  controls: { display: "flex", gap: 8, marginBottom: 12 },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
-    gap: 12
-  },
-  list: { display: "flex", flexDirection: "column", gap: 8 },
-  card: {
-    borderRadius: 8,
-    boxShadow: "0 2px 6px rgba(0,0,0,.08)",
-    cursor: "pointer",
-    overflow: "hidden"
-  },
-  thumb: {
-    height: 100,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 32
-  },
-  cardBody: { padding: 12 },
-  subtitle: { fontSize: 12, color: "#666" },
-  meta: { fontSize: 12, marginTop: 6, color: "#555" },
-  loading: { padding: 40, textAlign: "center" },
-  empty: { padding: 40, textAlign: "center" }
-};
 var root = document.getElementById("root");
 if (root)
   (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));

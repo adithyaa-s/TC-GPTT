@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "ChatGPT widget for TrainerCentral courses",
   "scripts": {
-    "build": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx",
-    "watch": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx --watch"
-  },
+  "build": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx",
+  "watch": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx --watch"
+},
   "dependencies": {
+    "@openai/apps-sdk-ui": "^0.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
