@@ -645,7 +645,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
         }
     
     elif method == "tools/call":
+        # Check authentication
         if not authorization or not authorization.startswith("Bearer "):
+            logger.warning("No authorization header")
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -655,18 +657,28 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 }
             }
         
+        # Extract access token
         access_token = authorization.replace("Bearer ", "").strip()
+        logger.info(f"Access token: {access_token[:20]}...")
+        
+        # Get tool info
         tool_name = params.get("name")
         arguments = params.get("arguments", {})
         
         logger.info(f"Tool: {tool_name}")
-        logger.info(f"Args: {arguments}")
+        logger.info(f"Args from ChatGPT: {arguments}")
         
+        # Special handling for tc_get_org_id
         if tool_name == "tc_get_org_id":
             arguments["access_token"] = access_token
+            logger.info("Special handling for tc_get_org_id")
         else:
+            # For all other tools
             arguments["access_token"] = access_token
+            
+            # Verify orgId was provided
             if "orgId" not in arguments:
+                logger.warning(f"⚠️ Tool {tool_name} called without orgId!")
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
@@ -676,8 +688,12 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     }
                 }
         
+        logger.info(f"Final args: {arguments}")
+        
+        # Call the tool
         try:
             if tool_name not in TOOL_REGISTRY:
+                logger.error(f"Tool not found: {tool_name}")
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
@@ -687,16 +703,70 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             tool_func = TOOL_REGISTRY[tool_name]
             result = tool_func(**arguments)
             
-            logger.info(f"✅ Success")
+            logger.info(f"✅ Tool {tool_name} executed successfully")
+            logger.info(f"Result keys: {result.keys() if isinstance(result, dict) else type(result)}")
             
+            # =====================================================================
+            # CRITICAL FIX: Proper MCP Response Format
+            # =====================================================================
+            
+            # Check if this is a widget-enabled response (has _meta)
+            if isinstance(result, dict) and "_meta" in result:
+                logger.info("Widget-enabled response detected")
+                
+                # Return in proper MCP format
+                mcp_response = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        # content: For the model's response
+                        "content": result.get("content", [
+                            {"type": "text", "text": "Operation completed"}
+                        ]),
+                        
+                        # isError: false (success)
+                        "isError": False
+                    }
+                }
+                
+                # Add structuredContent if present (for model)
+                if "structuredContent" in result:
+                    mcp_response["result"]["structuredContent"] = result["structuredContent"]
+                    logger.info(f"Added structuredContent: {result['structuredContent']}")
+                
+                # Add _meta if present (for widget ONLY)
+                if "_meta" in result:
+                    # IMPORTANT: Merge _meta at the result level, not in content!
+                    mcp_response["result"].update(result["_meta"])
+                    logger.info(f"Added _meta keys: {list(result['_meta'].keys())}")
+                
+                logger.info(f"Final MCP response keys: {mcp_response['result'].keys()}")
+                return mcp_response
+                
+            else:
+                # Regular non-widget response
+                logger.info("Regular (non-widget) response")
+                
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": json.dumps(result, indent=2)}
+                        ]
+                    }
+                }
+            
+        except TypeError as e:
+            logger.error(f"❌ TypeError: {str(e)}")
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "result": {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
+                    "content": [{"type": "text", "text": f"Parameter mismatch: {str(e)}"}],
+                    "isError": True
                 }
             }
-            
         except Exception as e:
             logger.error(f"❌ Error: {str(e)}", exc_info=True)
             return {
@@ -707,13 +777,8 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     "isError": True
                 }
             }
-    
-    else:
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "error": {"code": -32601, "message": f"Method not found: {method}"}
-        }
+
+
 
 
 @app.get("/")
