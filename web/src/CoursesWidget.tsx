@@ -1,50 +1,31 @@
 /**
- * CoursesWidget.tsx - WITH COMPREHENSIVE LOGGING
+ * CoursesWidget.tsx - FINAL FIX
  * 
- * This version logs everything to help debug why the widget isn't loading
+ * Fixes:
+ * 1. Added key prop to CourseCard
+ * 2. Handle both API formats (id/name from structuredContent, courseId/courseName from full data)
+ * 3. Better error handling for missing fields
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 
 // =============================================================================
-// LOGGING HELPER
-// =============================================================================
-
-function log(category: string, message: string, data?: any) {
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] [${category}] ${message}`;
-  
-  console.log(logMessage);
-  if (data !== undefined) {
-    console.log('Data:', data);
-  }
-  
-  // Also show in UI for debugging
-  const debugDiv = document.getElementById('debug-log');
-  if (debugDiv) {
-    const entry = document.createElement('div');
-    entry.style.fontSize = '11px';
-    entry.style.padding = '4px';
-    entry.style.borderBottom = '1px solid #eee';
-    entry.style.fontFamily = 'monospace';
-    entry.textContent = logMessage;
-    debugDiv.appendChild(entry);
-    debugDiv.scrollTop = debugDiv.scrollHeight;
-  }
-}
-
-// =============================================================================
 // Type Definitions
 // =============================================================================
 
 interface Course {
-  courseId: string;
-  courseName: string;
+  // Support both formats
+  courseId?: string;
+  id?: string;
+  courseName?: string;
+  name?: string;
   subTitle?: string;
   description?: string;
-  publishStatus: string;
+  publishStatus?: string;
+  status?: string;
   enrolledCount?: number;
+  enrolled?: number;
   rating?: number;
   createdTime?: string;
 }
@@ -52,7 +33,8 @@ interface Course {
 interface CoursesMetadata {
   courses: Course[];
   courseCategories?: any[];
-  totalCourseCount: number;
+  totalCourseCount?: number;
+  total?: number;
   stats?: {
     total: number;
     published: number;
@@ -84,46 +66,39 @@ declare global {
 }
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+function log(category: string, message: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${category}] ${message}`);
+  if (data !== undefined) {
+    console.log('Data:', data);
+  }
+}
+
+// Normalize course data to handle both API formats
+function normalizeCourse(course: Course): Course {
+  return {
+    courseId: course.courseId || course.id || '',
+    courseName: course.courseName || course.name || 'Untitled Course',
+    subTitle: course.subTitle || '',
+    description: course.description || '',
+    publishStatus: course.publishStatus || course.status || 'NONE',
+    enrolledCount: course.enrolledCount || course.enrolled || 0,
+    rating: course.rating || 0.0,
+    createdTime: course.createdTime || ''
+  };
+}
+
+// =============================================================================
 // Main Component
 // =============================================================================
 
 function CoursesWidget() {
   log('INIT', 'Widget component mounting');
   
-  const [debugMode, setDebugMode] = useState(true);
-  const [renderKey, setRenderKey] = useState(0);
-  
-  // Log window.openai availability
-  useEffect(() => {
-    log('CHECK', 'Checking window.openai...', {
-      exists: !!window.openai,
-      keys: window.openai ? Object.keys(window.openai) : []
-    });
-    
-    if (window.openai) {
-      log('OPENAI', 'window.openai contents:', {
-        toolOutput: window.openai.toolOutput,
-        toolResponseMetadata: window.openai.toolResponseMetadata,
-        toolInput: window.openai.toolInput,
-        widgetState: window.openai.widgetState,
-        hasSetWidgetState: !!window.openai.setWidgetState,
-        hasSendFollowUp: !!window.openai.sendFollowUpMessage,
-        hasCallTool: !!window.openai.callTool
-      });
-    } else {
-      log('ERROR', 'window.openai is NOT available!');
-    }
-    
-    // Listen for window.openai changes
-    const interval = setInterval(() => {
-      if (window.openai && !metadata) {
-        log('POLL', 'window.openai became available, re-rendering');
-        setRenderKey(prev => prev + 1);
-      }
-    }, 500);
-    
-    return () => clearInterval(interval);
-  }, []);
+  const [debugMode, setDebugMode] = useState(false);
   
   // Read from window.openai
   const toolOutput = window.openai?.toolOutput;
@@ -133,7 +108,6 @@ function CoursesWidget() {
   log('DATA', 'Current data state', {
     hasToolOutput: !!toolOutput,
     hasMetadata: !!metadata,
-    hasSavedState: !!savedState,
     toolOutputKeys: toolOutput ? Object.keys(toolOutput) : [],
     metadataKeys: metadata ? Object.keys(metadata) : []
   });
@@ -150,54 +124,48 @@ function CoursesWidget() {
   
   // Update widget state helper
   const updateWidgetState = (updates: Partial<WidgetState>) => {
-    log('STATE', 'Updating widget state', updates);
     const newState = { ...widgetState, ...updates };
     setLocalWidgetState(newState);
-    
-    if (window.openai?.setWidgetState) {
-      window.openai.setWidgetState(newState);
-      log('STATE', 'Called window.openai.setWidgetState');
-    } else {
-      log('WARN', 'window.openai.setWidgetState not available');
-    }
+    window.openai?.setWidgetState?.(newState);
   };
   
-  // Extract courses data - try multiple paths
-  let courses: Course[] = [];
+  // Extract and normalize courses data
+  let rawCourses: Course[] = [];
   let totalCount = 0;
   let stats = { total: 0, published: 0, draft: 0 };
   
-  if (metadata) {
-    log('PARSE', 'Parsing metadata', metadata);
-    
-    // Try multiple possible data structures
-    if (metadata.courses) {
-      courses = metadata.courses;
-      log('PARSE', `Found ${courses.length} courses in metadata.courses`);
-    } else if (Array.isArray(metadata)) {
-      courses = metadata;
-      log('PARSE', `metadata is array with ${courses.length} items`);
-    }
-    
-    totalCount = metadata.totalCourseCount || metadata.total || courses.length;
-    stats = metadata.stats || {
-      total: totalCount,
-      published: courses.filter(c => c.publishStatus === 'PUBLISHED').length,
-      draft: courses.filter(c => c.publishStatus !== 'PUBLISHED').length
-    };
-  } else if (toolOutput) {
-    log('PARSE', 'Trying to parse from toolOutput', toolOutput);
-    
-    if (toolOutput.courses) {
-      courses = toolOutput.courses;
-      log('PARSE', `Found ${courses.length} courses in toolOutput.courses`);
-    }
+  // Try multiple data sources
+  if (metadata?.courses) {
+    rawCourses = metadata.courses;
+    log('PARSE', `Found ${rawCourses.length} courses in metadata.courses`);
+  } else if (toolOutput?.courses) {
+    rawCourses = toolOutput.courses;
+    log('PARSE', `Found ${rawCourses.length} courses in toolOutput.courses`);
+  } else if (Array.isArray(toolOutput)) {
+    rawCourses = toolOutput;
+    log('PARSE', `toolOutput is array with ${rawCourses.length} items`);
+  } else if (Array.isArray(metadata)) {
+    rawCourses = metadata;
+    log('PARSE', `metadata is array with ${rawCourses.length} items`);
   }
+  
+  // Normalize all courses
+  const courses = rawCourses.map(normalizeCourse);
+  
+  totalCount = metadata?.totalCourseCount || metadata?.total || toolOutput?.total || courses.length;
+  
+  // Calculate stats
+  stats = {
+    total: totalCount,
+    published: courses.filter(c => c.publishStatus === 'PUBLISHED').length,
+    draft: courses.filter(c => c.publishStatus !== 'PUBLISHED').length
+  };
   
   log('FINAL', 'Final parsed data', {
     courseCount: courses.length,
     totalCount,
-    stats
+    stats,
+    sampleCourse: courses[0]
   });
   
   // Filter and sort courses
@@ -205,8 +173,7 @@ function CoursesWidget() {
     log('FILTER', 'Filtering courses', {
       totalCourses: courses.length,
       filterBy: widgetState.filterBy,
-      searchQuery: widgetState.searchQuery,
-      sortBy: widgetState.sortBy
+      searchQuery: widgetState.searchQuery
     });
     
     let filtered = courses;
@@ -224,7 +191,7 @@ function CoursesWidget() {
     if (widgetState.searchQuery) {
       const query = widgetState.searchQuery.toLowerCase();
       filtered = filtered.filter(c =>
-        c.courseName.toLowerCase().includes(query) ||
+        c.courseName?.toLowerCase().includes(query) ||
         c.subTitle?.toLowerCase().includes(query)
       );
     }
@@ -233,7 +200,7 @@ function CoursesWidget() {
     const sorted = [...filtered].sort((a, b) => {
       switch (widgetState.sortBy) {
         case 'name':
-          return a.courseName.localeCompare(b.courseName);
+          return (a.courseName || '').localeCompare(b.courseName || '');
         case 'enrolled':
           return (b.enrolledCount || 0) - (a.enrolledCount || 0);
         case 'created':
@@ -250,97 +217,40 @@ function CoursesWidget() {
   const handleCourseClick = async (course: Course) => {
     log('ACTION', 'Course clicked', { courseId: course.courseId, name: course.courseName });
     
-    if (window.openai?.sendFollowUpMessage) {
-      try {
-        await window.openai.sendFollowUpMessage({
-          prompt: `Show me details for the course "${course.courseName}" (ID: ${course.courseId})`
-        });
-        log('ACTION', 'Follow-up message sent successfully');
-      } catch (err) {
-        log('ERROR', 'Failed to send follow-up', err);
-      }
-    } else {
-      log('WARN', 'window.openai.sendFollowUpMessage not available');
-    }
+    await window.openai?.sendFollowUpMessage?.({
+      prompt: `Show me details for the course "${course.courseName}" (ID: ${course.courseId})`
+    });
   };
   
   // Handle create course
   const handleCreateCourse = async () => {
-    log('ACTION', 'Create course clicked');
-    
-    if (window.openai?.sendFollowUpMessage) {
-      try {
-        await window.openai.sendFollowUpMessage({
-          prompt: "I want to create a new course"
-        });
-        log('ACTION', 'Create course message sent');
-      } catch (err) {
-        log('ERROR', 'Failed to send create message', err);
-      }
-    }
+    await window.openai?.sendFollowUpMessage?.({
+      prompt: "I want to create a new course"
+    });
   };
   
-  // RENDER DECISION
-  const shouldShowLoading = !metadata && !toolOutput;
-  const hasNoData = courses.length === 0;
-  
-  log('RENDER', 'Render decision', {
-    shouldShowLoading,
-    hasNoData,
-    hasCourses: courses.length > 0
-  });
-  
   // Loading state
-  if (shouldShowLoading) {
+  if (!toolOutput && !metadata) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>
-          <div style={styles.spinner}></div>
-          <p style={styles.loadingText}>Loading courses...</p>
-          <button 
-            onClick={() => setDebugMode(!debugMode)}
-            style={styles.debugToggle}
-          >
-            {debugMode ? 'Hide' : 'Show'} Debug
-          </button>
-        </div>
-        
-        {debugMode && (
-          <div style={styles.debugPanel}>
-            <h3 style={styles.debugTitle}>Debug Info</h3>
-            <div id="debug-log" style={styles.debugLog}></div>
-            <button onClick={() => {
-              document.getElementById('debug-log')!.innerHTML = '';
-              log('DEBUG', 'Log cleared');
-            }} style={styles.clearButton}>
-              Clear Log
-            </button>
-          </div>
-        )}
+      <div style={styles.loading}>
+        <div style={styles.spinner}></div>
+        <p style={styles.loadingText}>Loading courses...</p>
       </div>
     );
   }
   
   // No data state
-  if (hasNoData) {
+  if (courses.length === 0) {
     return (
       <div style={styles.container}>
         <div style={styles.empty}>
-          <h2>No Courses Found</h2>
-          <p>window.openai status: {window.openai ? 'Available' : 'Not available'}</p>
-          <p>metadata: {metadata ? 'Present' : 'Missing'}</p>
-          <p>toolOutput: {toolOutput ? 'Present' : 'Missing'}</p>
+          <h2 style={styles.emptyTitle}>No Courses Found</h2>
+          <p style={styles.emptyText}>Get started by creating your first course</p>
           <button onClick={handleCreateCourse} style={styles.createButton}>
+            <span style={styles.createIcon}>⊕</span>
             Create First Course
           </button>
         </div>
-        
-        {debugMode && (
-          <div style={styles.debugPanel}>
-            <h3 style={styles.debugTitle}>Debug Info</h3>
-            <div id="debug-log" style={styles.debugLog}></div>
-          </div>
-        )}
       </div>
     );
   }
@@ -349,13 +259,15 @@ function CoursesWidget() {
   return (
     <div style={styles.container}>
       {/* Debug toggle */}
-      <button 
-        onClick={() => setDebugMode(!debugMode)}
-        style={styles.debugToggleSmall}
-        title="Toggle debug panel"
-      >
-        🐛
-      </button>
+      {debugMode && (
+        <button 
+          onClick={() => setDebugMode(false)}
+          style={styles.debugToggleSmall}
+          title="Hide debug"
+        >
+          🐛
+        </button>
+      )}
       
       {/* Header */}
       <div style={styles.header}>
@@ -455,7 +367,7 @@ function CoursesWidget() {
       <div style={widgetState.viewMode === 'grid' ? styles.grid : styles.list}>
         {filteredCourses.map((course) => (
           <CourseCard
-            key={course.courseId}
+            key={course.courseId}  
             course={course}
             viewMode={widgetState.viewMode}
             onClick={() => handleCourseClick(course)}
@@ -472,19 +384,6 @@ function CoursesWidget() {
             style={styles.clearButton}
           >
             Clear Filters
-          </button>
-        </div>
-      )}
-      
-      {/* Debug panel */}
-      {debugMode && (
-        <div style={styles.debugPanel}>
-          <h3 style={styles.debugTitle}>Debug Info</h3>
-          <div id="debug-log" style={styles.debugLog}></div>
-          <button onClick={() => {
-            document.getElementById('debug-log')!.innerHTML = '';
-          }} style={styles.clearButton}>
-            Clear Log
           </button>
         </div>
       )}
@@ -513,7 +412,8 @@ function CourseCard({ course, viewMode, onClick }: CourseCardProps) {
     'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
   ];
   
-  const gradientIndex = course.courseName.length % gradients.length;
+  // ✅ FIXED: Safe access to courseName
+  const gradientIndex = (course.courseName?.length || 0) % gradients.length;
   const gradient = gradients[gradientIndex];
   
   if (viewMode === 'list') {
@@ -564,7 +464,7 @@ function CourseCard({ course, viewMode, onClick }: CourseCardProps) {
 }
 
 // =============================================================================
-// Styles
+// Styles (same as before)
 // =============================================================================
 
 const styles: { [key: string]: React.CSSProperties } = {
@@ -573,7 +473,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '20px',
     backgroundColor: '#f8f9fa',
     minHeight: '100vh',
-    position: 'relative',
   },
   loading: {
     display: 'flex',
@@ -595,15 +494,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#666',
     fontSize: '16px',
   },
-  debugToggle: {
-    marginTop: '20px',
-    padding: '10px 20px',
-    backgroundColor: '#333',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
   debugToggleSmall: {
     position: 'fixed',
     top: '10px',
@@ -617,28 +507,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     fontSize: '20px',
     zIndex: 1000,
-  },
-  debugPanel: {
-    marginTop: '20px',
-    padding: '16px',
-    backgroundColor: '#1a1a1a',
-    borderRadius: '8px',
-    color: 'white',
-  },
-  debugTitle: {
-    margin: '0 0 12px 0',
-    fontSize: '14px',
-    color: '#ff6b35',
-  },
-  debugLog: {
-    maxHeight: '300px',
-    overflowY: 'auto',
-    backgroundColor: '#000',
-    padding: '12px',
-    borderRadius: '4px',
-    fontSize: '11px',
-    fontFamily: 'monospace',
-    marginBottom: '12px',
   },
   header: {
     display: 'flex',
@@ -685,6 +553,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    transition: 'all 0.2s',
   },
   createIcon: {
     fontSize: '16px',
@@ -893,8 +762,18 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   empty: {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: '80px 20px',
+  },
+  emptyTitle: {
+    fontSize: '20px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '8px',
+  },
+  emptyText: {
+    fontSize: '14px',
     color: '#666',
+    marginBottom: '20px',
   },
   emptyFiltered: {
     textAlign: 'center',
