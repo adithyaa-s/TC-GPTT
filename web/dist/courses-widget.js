@@ -24481,6 +24481,10 @@ function normalizeCourse(raw) {
 }
 function CoursesWidget() {
   log("info", "Widget mounting");
+  (0, import_react.useEffect)(() => {
+    console.log("\u{1F3F7} toolOutput:", window.openai?.toolOutput);
+    console.log("\u{1F3F7} toolResponseMetadata:", window.openai?.toolResponseMetadata);
+  }, []);
   const [state, setState] = (0, import_react.useState)(
     window.openai?.widgetState ?? {
       viewMode: "grid",

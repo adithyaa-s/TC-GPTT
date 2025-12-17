@@ -933,6 +933,10 @@ function normalizeCourse(raw: RawCourse): Course {
 
 function CoursesWidget() {
   log("info", "Widget mounting");
+    useEffect(() => {
+  console.log("🏷 toolOutput:", window.openai?.toolOutput);
+  console.log("🏷 toolResponseMetadata:", window.openai?.toolResponseMetadata);
+}, []);
 
   // ---------------------------------------------------------------------------
   // Widget UI state
