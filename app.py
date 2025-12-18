@@ -761,7 +761,6 @@ import json
 import logging
 from fastapi import FastAPI, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.responses import JSONResponse
 
 from tools.portals.portal_handler import tc_get_org_id
@@ -770,10 +769,14 @@ from tools.courses.course_handler import (
     tc_get_course
 )
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+app = FastAPI(title="TrainerCentral MCP Server with Logging")
 
-app = FastAPI(title="TrainerCentral MCP Server")
+# ensure logs directory exists
+os.makedirs("logs", exist_ok=True)
+
+# Set up basic logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("mcp")
 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://tc-gptt.onrender.com")
 TC_API_BASE_URL = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
@@ -789,77 +792,81 @@ widget_metadata = {
     "openai/widgetDomain": MCP_SERVER_URL,
     "openai/widgetCSP": {
         "connect_domains": [MCP_SERVER_URL, TC_API_BASE_URL],
-        "resource_domains": ["https://*.oaistatic.com"],
-    },
+        "resource_domains": ["https://*.oaistatic.com"]
+    }
 }
+
+# helpers to log structured JSON
+def log_request(body):
+    with open("logs/mcp_requests.jsonl", "a") as f:
+        f.write(json.dumps(body) + "\n")
+
+def log_response(response):
+    with open("logs/mcp_responses.jsonl", "a") as f:
+        f.write(json.dumps(response) + "\n")
 
 @app.post("/")
 async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
-    # Log the incoming raw body
     try:
         body = await request.json()
-    except Exception as e:
-        logger.error("❌ Failed to parse incoming JSON: %s", str(e))
+    except:
         return JSONResponse(status_code=400, content={"error": "invalid json"})
 
-    logger.debug("⬇️ Incoming request JSON:\n%s", json.dumps(body, indent=2))
+    # Log the incoming request
+    log_request({"authorization": authorization, "body": body})
 
     method = body.get("method")
     params = body.get("params", {})
     req_id = body.get("id")
 
-    # Default response object — will be logged too
+    # default response
     response_obj = {"jsonrpc": "2.0", "id": req_id}
 
     try:
         if method == "initialize":
-            result = {
+            response_obj["result"] = {
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {"name": "trainercentral-fastmcp", "version": "1.0.0"},
-                "capabilities": {"tools": {}},
+                "capabilities": {"tools": {}}
             }
-            response_obj["result"] = result
-            logger.debug("🧠 initialize -> %s", json.dumps(result, indent=2))
 
         elif method == "resources/list":
-            resources = [
-                {
-                    "uri": "ui://widget/courses.html",
-                    "name": "Courses Widget",
-                    "description": "Simple list of courses",
-                    "mimeType": "text/html+skybridge",
-                    "_meta": widget_metadata
-                },
-                {
-                    "uri": "ui://widget/course-details.html",
-                    "name": "Course Details Widget",
-                    "description": "Displays selected course details",
-                    "mimeType": "text/html+skybridge",
-                    "_meta": widget_metadata
-                }
-            ]
-            response_obj["result"] = {"resources": resources}
-            logger.debug("📦 resources/list -> %s", json.dumps(resources, indent=2))
+            response_obj["result"] = {
+                "resources": [
+                    {
+                        "uri": "ui://widget/courses.html",
+                        "name": "Courses Widget",
+                        "description": "Simple list of courses",
+                        "mimeType": "text/html+skybridge",
+                        "_meta": widget_metadata
+                    },
+                    {
+                        "uri": "ui://widget/course-details.html",
+                        "name": "Course Details Widget",
+                        "description": "Details view",
+                        "mimeType": "text/html+skybridge",
+                        "_meta": widget_metadata
+                    }
+                ]
+            }
 
         elif method == "resources/read":
-            resource_uri = params.get("uri")
-            logger.debug("📌 resources/read called for URI: %s", resource_uri)
-
-            if resource_uri == "ui://widget/courses.html":
+            uri = params.get("uri")
+            if uri == "ui://widget/courses.html":
                 js_path = os.path.join(os.path.dirname(__file__), "web/dist/courses-widget.js")
-            elif resource_uri == "ui://widget/course-details.html":
+            elif uri == "ui://widget/course-details.html":
                 js_path = os.path.join(os.path.dirname(__file__), "web/dist/course-details.js")
             else:
                 response_obj["error"] = {"code": -32002, "message": "Resource not found"}
-                logger.error("❌ resources/read resource not found: %s", resource_uri)
+                log_response(response_obj)
                 return response_obj
 
             try:
                 with open(js_path, "r") as f:
                     bundle = f.read()
             except FileNotFoundError:
-                response_obj["error"] = {"code": -32002, "message": "Bundle not built"}
-                logger.error("❌ Widget bundle missing at: %s", js_path)
+                response_obj["error"] = {"code": -32002, "message": "Widget bundle missing"}
+                log_response(response_obj)
                 return response_obj
 
             html = f"""
@@ -869,24 +876,22 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
               <script type="module">{bundle}</script>
             </body></html>
             """
-
             response_obj["result"] = {
                 "contents": [
-                    {"uri": resource_uri, "mimeType": "text/html+skybridge", "text": html, "_meta": widget_metadata}
+                    {"uri": uri, "mimeType": "text/html+skybridge", "text": html, "_meta": widget_metadata}
                 ]
             }
-            logger.debug("📄 resources/read HTML for %s", resource_uri)
 
         elif method == "tools/list":
             tools = [
                 {
                     "name": "tc_get_org_id",
-                    "description": "Get Org ID (first call)",
+                    "description": "Get Org ID",
                     "inputSchema": {"type": "object", "properties": {}, "required": []}
                 },
                 {
                     "name": "tc_list_courses_with_widget",
-                    "description": "List courses (simple widget)",
+                    "description": "List courses with widget",
                     "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}}, "required": ["orgId"]},
                     "_meta": {
                         "openai/outputTemplate": "ui://widget/courses.html",
@@ -906,60 +911,48 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                 }
             ]
             response_obj["result"] = {"tools": tools}
-            logger.debug("🛠 tools/list -> %s", json.dumps(tools, indent=2))
 
         elif method == "tools/call":
-            logger.debug("🔧 tools/call params -> %s", json.dumps(params, indent=2))
-
-            auth = authorization or ""
-            if not auth.startswith("Bearer "):
-                response_obj["result"] = {"content": [{"type":"text","text":"Auth missing"}], "isError": True}
-                logger.error("❌ Authorization missing")
+            # auth
+            if not authorization or not authorization.startswith("Bearer "):
+                response_obj["result"] = {"content":[{"type":"text","text":"Auth missing"}], "isError": True}
             else:
-                access_token = auth.split("Bearer ")[-1]
-                tool_name = params.get("name")
+                access_token = authorization.split("Bearer ")[-1].strip()
+                name = params.get("name")
                 args = params.get("arguments", {})
                 args["access_token"] = access_token
 
-                logger.debug("👉 Calling tool %s with args %s", tool_name, json.dumps(args, indent=2))
-
-                func_registry = {
+                tool_registry = {
                     "tc_get_org_id": tc_get_org_id,
                     "tc_list_courses_with_widget": tc_list_courses_with_widget,
                     "tc_get_course": tc_get_course
                 }
-                func = func_registry.get(tool_name)
+                func = tool_registry.get(name)
 
                 if not func:
                     response_obj["error"] = {"code": -32601, "message": "Tool not found"}
-                    logger.error("❌ Tool not found: %s", tool_name)
                 else:
                     try:
                         result = func(**args)
-                        logger.debug("📊 Tool %s output -> %s", tool_name, json.dumps(result, indent=2))
-
+                        # if widget metadata exists
                         if isinstance(result, dict) and "_meta" in result:
                             response_obj["result"] = {
                                 "content": result.get("content", []),
-                                "structuredContent": result.get("structuredContent", {})
+                                "structuredContent": result.get("structuredContent", {}),
                             }
                             response_obj["result"].update(result["_meta"])
                         else:
-                            response_obj["result"] = {"content":[{"type":"text","text":json.dumps(result)}]}
+                            response_obj["result"] = {"content": [{"type": "text", "text": json.dumps(result)}]}
                     except Exception as e:
                         response_obj["result"] = {"content":[{"type":"text","text":str(e)}], "isError": True}
-                        logger.error("❌ Error in tool %s: %s", tool_name, str(e))
 
         else:
-            response_obj["error"] = {"code": -32601, "message": "Method not supported"}
-            logger.error("❌ Unsupported method: %s", method)
+            response_obj["error"] = {"code": -32601, "message": "Method unsupported"}
 
-    except Exception as e:
-        response_obj["error"] = {"code": -32000, "message": str(e)}
-        logger.error("🔥 Unexpected error: %s", str(e))
+    except Exception as exc:
+        response_obj = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32000, "message": str(exc)}}
 
-    # Log the full response we send back
-    response_json = json.dumps(response_obj, indent=2)
-    logger.debug("⬆️ Sending response JSON:\n%s", response_json)
+    # Log the MCP response
+    log_response(response_obj)
 
     return JSONResponse(content=response_obj)
