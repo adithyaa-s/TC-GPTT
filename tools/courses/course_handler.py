@@ -94,30 +94,100 @@ def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
 
 
 #@mcp.tool()
+# def tc_get_course(courseId: str, orgId: str, access_token: str) -> dict:
+#     """
+#     Retrieve a course by its ID.
+
+#     Syntax:
+#         tc_get_course("3000094000002000004")
+
+#     Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
+#     This will call the TrainerCentral Get Course API:
+#         GET /api/v4/{orgId}/courses/{courseId}.json
+
+#     Required OAuth scope:
+#         TrainerCentral.courseapi.READ
+
+#     Returns:
+#         dict containing:
+#             - courseId
+#             - courseName
+#             - description
+#             - subTitle
+#             - links to sessions, tickets, etc.
+#     """
+#     return tc.get_course(courseId, orgId, access_token)
+
 def tc_get_course(courseId: str, orgId: str, access_token: str) -> dict:
     """
-    Retrieve a course by its ID.
+    Retrieve a course by its ID, returning a UI-widget enabled response.
 
-    Syntax:
-        tc_get_course("3000094000002000004")
+    The MCP response includes:
+      - structuredContent: concise summary for the model
+      - content: optional text for the model
+      - _meta: full course details for the widget
 
-    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
-
-    This will call the TrainerCentral Get Course API:
-        GET /api/v4/{orgId}/courses/{courseId}.json
-
-    Required OAuth scope:
-        TrainerCentral.courseapi.READ
+    Args:
+        courseId (str): ID of the course to retrieve.
+        orgId (str): Organization ID (from tc_get_org_id)
+        access_token (str): OAuth access token
 
     Returns:
-        dict containing:
-            - courseId
-            - courseName
-            - description
-            - subTitle
-            - links to sessions, tickets, etc.
+        dict: MCP response with course info for both model and widget.
     """
-    return tc.get_course(courseId, orgId, access_token)
+
+    # Fetch the course details from the underlying library
+    try:
+        result = tc.get_course(courseId, orgId, access_token)
+    except Exception as e:
+        # In case of errors, return a structured error
+        error_msg = f"Failed to retrieve course {courseId}: {str(e)}"
+        return {
+            "structuredContent": {"summary": error_msg},
+            "content": [
+                {"type": "text", "text": error_msg}
+            ],
+            "isError": True
+        }
+
+    # Result from tc.get_course should be a dict with course details
+    course_obj = result if isinstance(result, dict) else {}
+
+    # Build a summary string for the model
+    course_name = course_obj.get("courseName") or course_obj.get("name") or courseId
+    summary_text = f"Details for course {course_name} (ID: {courseId})."
+
+    # Return MCP widget-ready format
+    return {
+        # Model sees this
+        "structuredContent": {
+            "summary": summary_text,
+            # Optionally include core fields if you want the model to reason about them
+            "course": {
+                "id": course_obj.get("courseId") or course_obj.get("id") or courseId,
+                "name": course_obj.get("courseName") or course_obj.get("name") or "",
+                "description": course_obj.get("description") or "",
+                "subTitle": course_obj.get("subTitle") or "",
+                "status": course_obj.get("publishStatus") or "",
+                "enrolled": course_obj.get("enrolledCount", 0),
+            },
+        },
+
+        # Optional narrative for model
+        "content": [
+            {
+                "type": "text",
+                "text": summary_text
+            }
+        ],
+
+        # Widget sees full course details here
+        "_meta": {
+            "course": course_obj
+        }
+    }
+
 
 
 # #@mcp.tool()
