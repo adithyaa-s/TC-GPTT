@@ -844,105 +844,106 @@
 // V1
 
 
-import React, { useState, useMemo } from "react";
-import { createRoot } from "react-dom/client";
-import { useSyncExternalStore } from "react";
 
-// ----------------------------------------------
-// Hook to subscribe to `window.openai` globals
-// as described in the official Apps SDK docs
-// ----------------------------------------------
+// import React, { useState, useMemo } from "react";
+// import { createRoot } from "react-dom/client";
+// import { useSyncExternalStore } from "react";
 
-const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+// // ----------------------------------------------
+// // Hook to subscribe to `window.openai` globals
+// // as described in the official Apps SDK docs
+// // ----------------------------------------------
 
-function useOpenAiGlobal(key) {
-  return useSyncExternalStore(
-    (onChange) => {
-      const handler = (event) => {
-        const value = event.detail.globals?.[key];
-        if (value !== undefined) {
-          onChange();
-        }
-      };
-      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
-        passive: true,
-      });
-      return () => {
-        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
-      };
-    },
-    () => window.openai?.[key],
-    () => window.openai?.[key]
-  );
-}
+// const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
 
-// ----------------------------------------------
-// Types
-// ----------------------------------------------
+// function useOpenAiGlobal(key) {
+//   return useSyncExternalStore(
+//     (onChange) => {
+//       const handler = (event) => {
+//         const value = event.detail.globals?.[key];
+//         if (value !== undefined) {
+//           onChange();
+//         }
+//       };
+//       window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler, {
+//         passive: true,
+//       });
+//       return () => {
+//         window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+//       };
+//     },
+//     () => window.openai?.[key],
+//     () => window.openai?.[key]
+//   );
+// }
 
-type ViewMode = "grid" | "list";
-type SortBy = "created" | "name" | "enrolled";
-type FilterBy = "all" | "draft" | "published";
+// // ----------------------------------------------
+// // Types
+// // ----------------------------------------------
 
-interface RawCourse {
-  id?: string;
-  courseId?: string;
-  name?: string;
-  courseName?: string;
-  subTitle?: string;
-  description?: string;
-  status?: string;
-  publishStatus?: string;
-  enrolled?: number;
-  enrolledCount?: number;
-  rating?: number;
-  createdTime?: string | number;
-}
+// type ViewMode = "grid" | "list";
+// type SortBy = "created" | "name" | "enrolled";
+// type FilterBy = "all" | "draft" | "published";
 
-interface Course {
-  courseId: string;
-  courseName: string;
-  subTitle: string;
-  publishStatus: "PUBLISHED" | "DRAFT" | "NONE";
-  enrolledCount: number;
-  rating: number;
-  createdTime: number;
-}
+// interface RawCourse {
+//   id?: string;
+//   courseId?: string;
+//   name?: string;
+//   courseName?: string;
+//   subTitle?: string;
+//   description?: string;
+//   status?: string;
+//   publishStatus?: string;
+//   enrolled?: number;
+//   enrolledCount?: number;
+//   rating?: number;
+//   createdTime?: string | number;
+// }
 
-interface WidgetState {
-  viewMode: ViewMode;
-  sortBy: SortBy;
-  filterBy: FilterBy;
-  searchQuery: string;
-}
+// interface Course {
+//   courseId: string;
+//   courseName: string;
+//   subTitle: string;
+//   publishStatus: "PUBLISHED" | "DRAFT" | "NONE";
+//   enrolledCount: number;
+//   rating: number;
+//   createdTime: number;
+// }
 
-// ----------------------------------------------
-// Helpers
-// ----------------------------------------------
+// interface WidgetState {
+//   viewMode: ViewMode;
+//   sortBy: SortBy;
+//   filterBy: FilterBy;
+//   searchQuery: string;
+// }
 
-function log(level, message, data) {
-  const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
-  if (data !== undefined) {
-    console[level === "error" ? "error" : "log"](prefix, message, data);
-  } else {
-    console[level === "error" ? "error" : "log"](prefix, message);
-  }
-}
+// // ----------------------------------------------
+// // Helpers
+// // ----------------------------------------------
 
-function normalizeCourse(raw: RawCourse): Course {
-  return {
-    courseId: raw.courseId || raw.id || crypto.randomUUID(),
-    courseName: raw.courseName || raw.name || "Untitled Course",
-    subTitle: raw.subTitle || "",
-    publishStatus:
-      (raw.publishStatus || raw.status || "NONE") === "PUBLISHED"
-        ? "PUBLISHED"
-        : "DRAFT",
-    enrolledCount: raw.enrolledCount ?? raw.enrolled ?? 0,
-    rating: raw.rating ?? 0,
-    createdTime: Number(raw.createdTime) || 0,
-  };
-}
+// function log(level, message, data) {
+//   const prefix = `[CoursesWidget:${level.toUpperCase()}]`;
+//   if (data !== undefined) {
+//     console[level === "error" ? "error" : "log"](prefix, message, data);
+//   } else {
+//     console[level === "error" ? "error" : "log"](prefix, message);
+//   }
+// }
+
+// function normalizeCourse(raw: RawCourse): Course {
+//   return {
+//     courseId: raw.courseId || raw.id || crypto.randomUUID(),
+//     courseName: raw.courseName || raw.name || "Untitled Course",
+//     subTitle: raw.subTitle || "",
+//     publishStatus:
+//       (raw.publishStatus || raw.status || "NONE") === "PUBLISHED"
+//         ? "PUBLISHED"
+//         : "DRAFT",
+//     enrolledCount: raw.enrolledCount ?? raw.enrolled ?? 0,
+//     rating: raw.rating ?? 0,
+//     createdTime: Number(raw.createdTime) || 0,
+//   };
+// }
 
 // ----------------------------------------------
 // Main Widget

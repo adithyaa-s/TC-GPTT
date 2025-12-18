@@ -1137,7 +1137,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useId();
         }
-        function useSyncExternalStore2(subscribe, getSnapshot, getServerSnapshot) {
+        function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
         }
@@ -1887,7 +1887,7 @@ var require_react_development = __commonJS({
         exports.useReducer = useReducer;
         exports.useRef = useRef;
         exports.useState = useState2;
-        exports.useSyncExternalStore = useSyncExternalStore2;
+        exports.useSyncExternalStore = useSyncExternalStore;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop === "function") {
@@ -24458,12 +24458,11 @@ var require_jsx_runtime = __commonJS({
 
 // src/CoursesWidget.tsx
 var import_react = __toESM(require_react());
-var import_react2 = __toESM(require_react());
 var import_client = __toESM(require_client());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
 function CoursesWidget() {
-  const [courses, setCourses] = (0, import_react2.useState)([]);
-  (0, import_react2.useEffect)(() => {
+  const [courses, setCourses] = (0, import_react.useState)([]);
+  (0, import_react.useEffect)(() => {
     const output = window.openai?.toolOutput;
     console.log("Courses widget toolOutput:", output);
     const all = output?._meta?.courses ?? [];
