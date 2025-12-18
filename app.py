@@ -756,12 +756,12 @@
 # if __name__ == "__main__":
 #     import uvicorn
 #     uvicorn.run(app, host="0.0.0.0", port=8000)
-
 import os
 import json
 import logging
-from fastapi import FastAPI, Request, Header, Response
+from fastapi import FastAPI, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
+
 from fastapi.responses import JSONResponse
 
 from tools.portals.portal_handler import tc_get_org_id
@@ -770,7 +770,7 @@ from tools.courses.course_handler import (
     tc_get_course
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="TrainerCentral MCP Server")
@@ -790,156 +790,176 @@ widget_metadata = {
     "openai/widgetCSP": {
         "connect_domains": [MCP_SERVER_URL, TC_API_BASE_URL],
         "resource_domains": ["https://*.oaistatic.com"],
-    }
+    },
 }
 
 @app.post("/")
 async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
+    # Log the incoming raw body
     try:
         body = await request.json()
-    except:
-        return {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}}
+    except Exception as e:
+        logger.error("❌ Failed to parse incoming JSON: %s", str(e))
+        return JSONResponse(status_code=400, content={"error": "invalid json"})
+
+    logger.debug("⬇️ Incoming request JSON:\n%s", json.dumps(body, indent=2))
 
     method = body.get("method")
     params = body.get("params", {})
     req_id = body.get("id")
 
-    logger.info(f"MCP Call: {method}")
+    # Default response object — will be logged too
+    response_obj = {"jsonrpc": "2.0", "id": req_id}
 
-    if method == "initialize":
-        return {"jsonrpc": "2.0", "id": req_id, "result": {
-            "protocolVersion": "2024-11-05",
-            "serverInfo": {"name": "trainercentral-fastmcp", "version": "1.0.0"},
-            "capabilities": {"tools": {}}
-        }}
-
-    if method == "resources/list":
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {
-                "resources": [
-                    {
-                        "uri": "ui://widget/courses.html",
-                        "name": "Courses Widget",
-                        "description": "Simple list of courses",
-                        "mimeType": "text/html+skybridge",
-                        "_meta": widget_metadata
-                    },
-                    {
-                        "uri": "ui://widget/course-details.html",
-                        "name": "Course Details Widget",
-                        "description": "Displays selected course details",
-                        "mimeType": "text/html+skybridge",
-                        "_meta": widget_metadata
-                    }
-                ]
+    try:
+        if method == "initialize":
+            result = {
+                "protocolVersion": "2024-11-05",
+                "serverInfo": {"name": "trainercentral-fastmcp", "version": "1.0.0"},
+                "capabilities": {"tools": {}},
             }
-        }
+            response_obj["result"] = result
+            logger.debug("🧠 initialize -> %s", json.dumps(result, indent=2))
 
-    if method == "resources/read":
-        resource_uri = params.get("uri")
-        if resource_uri == "ui://widget/courses.html":
-            js_path = os.path.join(os.path.dirname(__file__), "web/dist/courses-widget.js")
-        elif resource_uri == "ui://widget/course-details.html":
-            js_path = os.path.join(os.path.dirname(__file__), "web/dist/course-details.js")
-        else:
-            return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32002, "message": "Resource not found"}}
-
-        try:
-            with open(js_path, "r") as f:
-                bundle = f.read()
-        except FileNotFoundError:
-            return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32002, "message": "Bundle not built"}}
-
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head></head>
-        <body>
-            <div id="root"></div>
-            <script type="module">{bundle}</script>
-        </body>
-        </html>
-        """
-
-        return {"jsonrpc": "2.0", "id": req_id, "result": {
-            "contents": [
+        elif method == "resources/list":
+            resources = [
                 {
-                    "uri": resource_uri,
+                    "uri": "ui://widget/courses.html",
+                    "name": "Courses Widget",
+                    "description": "Simple list of courses",
                     "mimeType": "text/html+skybridge",
-                    "text": html,
+                    "_meta": widget_metadata
+                },
+                {
+                    "uri": "ui://widget/course-details.html",
+                    "name": "Course Details Widget",
+                    "description": "Displays selected course details",
+                    "mimeType": "text/html+skybridge",
                     "_meta": widget_metadata
                 }
             ]
-        }}
+            response_obj["result"] = {"resources": resources}
+            logger.debug("📦 resources/list -> %s", json.dumps(resources, indent=2))
 
-    if method == "tools/list":
-        tools = [
-            {
-                "name": "tc_get_org_id",
-                "description": "Get Org ID (first call)",
-                "inputSchema": {"type": "object", "properties": {}, "required": []}
-            },
-            {
-                "name": "tc_list_courses_with_widget",
-                "description": "List courses (simple widget)",
-                "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}}, "required": ["orgId"]},
-                "_meta": {
-                    "openai/outputTemplate": "ui://widget/courses.html",
-                    "openai/widgetAccessible": True,
-                    **widget_metadata
-                }
-            },
-            {
-                "name": "tc_get_course",
-                "description": "Get course details",
-                "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}, "courseId": {"type": "string"}}, "required": ["orgId", "courseId"]},
-                "_meta": {
-                    "openai/outputTemplate": "ui://widget/course-details.html",
-                    "openai/widgetAccessible": True,
-                    **widget_metadata
-                }
+        elif method == "resources/read":
+            resource_uri = params.get("uri")
+            logger.debug("📌 resources/read called for URI: %s", resource_uri)
+
+            if resource_uri == "ui://widget/courses.html":
+                js_path = os.path.join(os.path.dirname(__file__), "web/dist/courses-widget.js")
+            elif resource_uri == "ui://widget/course-details.html":
+                js_path = os.path.join(os.path.dirname(__file__), "web/dist/course-details.js")
+            else:
+                response_obj["error"] = {"code": -32002, "message": "Resource not found"}
+                logger.error("❌ resources/read resource not found: %s", resource_uri)
+                return response_obj
+
+            try:
+                with open(js_path, "r") as f:
+                    bundle = f.read()
+            except FileNotFoundError:
+                response_obj["error"] = {"code": -32002, "message": "Bundle not built"}
+                logger.error("❌ Widget bundle missing at: %s", js_path)
+                return response_obj
+
+            html = f"""
+            <!DOCTYPE html>
+            <html><body>
+              <div id="root"></div>
+              <script type="module">{bundle}</script>
+            </body></html>
+            """
+
+            response_obj["result"] = {
+                "contents": [
+                    {"uri": resource_uri, "mimeType": "text/html+skybridge", "text": html, "_meta": widget_metadata}
+                ]
             }
-        ]
-        return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}}
+            logger.debug("📄 resources/read HTML for %s", resource_uri)
 
-    if method == "tools/call":
-        if not authorization or not authorization.startswith("Bearer "):
-            return {"jsonrpc": "2.0", "id": req_id, "result": {"content":[{"type":"text","text":"Authentication missing"}], "isError": True}}
-        access_token = authorization.split("Bearer ")[-1].strip()
-        tool_name = params.get("name")
-        args = params.get("arguments", {})
-        args["access_token"] = access_token
-
-        # func dispatch
-        from tools.courses.course_handler import tc_list_courses_with_widget, tc_get_course
-        registry = {
-            "tc_get_org_id": tc_get_org_id,
-            "tc_list_courses_with_widget": tc_list_courses_with_widget,
-            "tc_get_course": tc_get_course
-        }
-        func = registry.get(tool_name)
-        if not func:
-            return {"jsonrpc":"2.0","id":req_id,"error":{"code":-32601,"message":"Tool not found"}}
-
-        try:
-            result = func(**args)
-        except Exception as e:
-            return {"jsonrpc": "2.0", "id": req_id, "result": {"content":[{"type":"text","text":str(e)}], "isError":True}}
-
-        if isinstance(result, dict) and "_meta" in result:
-            payload = {
-                "jsonrpc":"2.0",
-                "id":req_id,
-                "result": {
-                    "content": result.get("content", []),
-                    "structuredContent": result.get("structuredContent", {}),
+        elif method == "tools/list":
+            tools = [
+                {
+                    "name": "tc_get_org_id",
+                    "description": "Get Org ID (first call)",
+                    "inputSchema": {"type": "object", "properties": {}, "required": []}
+                },
+                {
+                    "name": "tc_list_courses_with_widget",
+                    "description": "List courses (simple widget)",
+                    "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}}, "required": ["orgId"]},
+                    "_meta": {
+                        "openai/outputTemplate": "ui://widget/courses.html",
+                        "openai/widgetAccessible": True,
+                        **widget_metadata
+                    }
+                },
+                {
+                    "name": "tc_get_course",
+                    "description": "Get course details",
+                    "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}, "courseId": {"type": "string"}}, "required": ["orgId", "courseId"]},
+                    "_meta": {
+                        "openai/outputTemplate": "ui://widget/course-details.html",
+                        "openai/widgetAccessible": True,
+                        **widget_metadata
+                    }
                 }
-            }
-            payload["result"].update(result["_meta"])
-            return payload
+            ]
+            response_obj["result"] = {"tools": tools}
+            logger.debug("🛠 tools/list -> %s", json.dumps(tools, indent=2))
 
-        return {"jsonrpc": "2.0", "id": req_id, "result": {"content":[{"type":"text","text":json.dumps(result)}]}}
+        elif method == "tools/call":
+            logger.debug("🔧 tools/call params -> %s", json.dumps(params, indent=2))
 
-    return {"jsonrpc":"2.0","id":req_id,"error":{"code":-32601,"message":"Method not supported"}}
+            auth = authorization or ""
+            if not auth.startswith("Bearer "):
+                response_obj["result"] = {"content": [{"type":"text","text":"Auth missing"}], "isError": True}
+                logger.error("❌ Authorization missing")
+            else:
+                access_token = auth.split("Bearer ")[-1]
+                tool_name = params.get("name")
+                args = params.get("arguments", {})
+                args["access_token"] = access_token
+
+                logger.debug("👉 Calling tool %s with args %s", tool_name, json.dumps(args, indent=2))
+
+                func_registry = {
+                    "tc_get_org_id": tc_get_org_id,
+                    "tc_list_courses_with_widget": tc_list_courses_with_widget,
+                    "tc_get_course": tc_get_course
+                }
+                func = func_registry.get(tool_name)
+
+                if not func:
+                    response_obj["error"] = {"code": -32601, "message": "Tool not found"}
+                    logger.error("❌ Tool not found: %s", tool_name)
+                else:
+                    try:
+                        result = func(**args)
+                        logger.debug("📊 Tool %s output -> %s", tool_name, json.dumps(result, indent=2))
+
+                        if isinstance(result, dict) and "_meta" in result:
+                            response_obj["result"] = {
+                                "content": result.get("content", []),
+                                "structuredContent": result.get("structuredContent", {})
+                            }
+                            response_obj["result"].update(result["_meta"])
+                        else:
+                            response_obj["result"] = {"content":[{"type":"text","text":json.dumps(result)}]}
+                    except Exception as e:
+                        response_obj["result"] = {"content":[{"type":"text","text":str(e)}], "isError": True}
+                        logger.error("❌ Error in tool %s: %s", tool_name, str(e))
+
+        else:
+            response_obj["error"] = {"code": -32601, "message": "Method not supported"}
+            logger.error("❌ Unsupported method: %s", method)
+
+    except Exception as e:
+        response_obj["error"] = {"code": -32000, "message": str(e)}
+        logger.error("🔥 Unexpected error: %s", str(e))
+
+    # Log the full response we send back
+    response_json = json.dumps(response_obj, indent=2)
+    logger.debug("⬆️ Sending response JSON:\n%s", response_json)
+
+    return JSONResponse(content=response_obj)
