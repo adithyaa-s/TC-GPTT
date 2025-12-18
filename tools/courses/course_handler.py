@@ -251,21 +251,33 @@ def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = 
 # }
 
 def tc_list_courses_with_widget(orgId: str, access_token: str, limit=None, si=None):
+    # call TrainerCentral API
     courses_response = tc.list_courses(orgId, access_token)
 
     courses = courses_response.get("courses", [])
     meta = courses_response.get("meta", {})
-    total = meta.get("totalCourseCount", len(courses))
 
-    return {
-        "structuredContent": {"summary": f"You have {total} courses"},
+    total = meta.get("totalCourseCount", len(courses))
+    published_count = sum(1 for c in courses if c.get("publishStatus") == "PUBLISHED")
+    draft_count = len(courses) - published_count
+
+    # Build the result dict
+    result = {
         "content": [
-            {"type": "text", "text": f"Here are your courses:"}
+            {"type": "text", "text": f"You have {total} courses ({published_count} published, {draft_count} drafts)."}
         ],
-        "_meta": {
-            "courses": courses
-        }
+        "structuredContent": {
+            "summary": f"You have {total} courses."
+        },
+        # **Important:** include fields at top-level of result
+        "courses": courses,
+        "totalCourseCount": total,
+        "publishedCount": published_count,
+        "draftCount": draft_count
     }
+
+    return result
+
 
 def tc_get_course(orgId: str, courseId: str, access_token: str):
     course = tc.get_course(orgId, access_token, courseId)
