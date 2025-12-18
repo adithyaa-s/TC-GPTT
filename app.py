@@ -248,6 +248,21 @@ async def mcp_handler_alias(request: Request, authorization: Optional[str] = Hea
     return await mcp_handler(request, authorization)
 
 
+widget_metadata = {
+    "openai/widgetDomain": MCP_SERVER_URL,
+    "openai/widgetCSP": {
+        "connect_domains": [
+            MCP_SERVER_URL,
+            TC_API_BASE_URL
+        ],
+        "resource_domains": [
+            "https://*.oaistatic.com"
+        ]
+    }
+}
+
+
+
 @app.post("/")
 async def mcp_handler(request: Request, authorization: Optional[str] = Header(None)):
     try:
@@ -287,13 +302,15 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                         "uri": "ui://widget/courses.html",
                         "name": "Courses Widget",
                         "description": "Interactive list of courses",
-                        "mimeType": "text/html+skybridge"
+                        "mimeType": "text/html+skybridge",
+                        "_meta": widget_metadata
                     },
                     {
                         "uri": "ui://widget/course-details.html",
                         "name": "Course Details Widget",
                         "description": "Interactive course details view",
-                        "mimeType": "text/html+skybridge"
+                        "mimeType": "text/html+skybridge",
+                        "_meta": widget_metadata
                     }
                 ]
             }
@@ -418,7 +435,8 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 "inputSchema":{"type":"object","properties":{"orgId":{"type":"string"},"courseId":{"type":"string"}},"required":["orgId","courseId"]},
                 "_meta":{
                     "openai/outputTemplate":"ui://widget/course-details.html",
-                    "openai/widgetAccessible":True
+                    "openai/widgetAccessible":True,
+                    **widget_metadata
                 }
             },
              {
@@ -427,7 +445,8 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 "inputSchema":{"type":"object","properties":{"orgId":{"type":"string"}},"required":["orgId"]},
                 "_meta":{
                     "openai/outputTemplate":"ui://widget/courses.html",
-                    "openai/widgetAccessible":True
+                    "openai/widgetAccessible":True,
+                    **widget_metadata
                 }
             },
             {
