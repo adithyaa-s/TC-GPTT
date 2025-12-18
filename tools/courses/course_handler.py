@@ -258,25 +258,23 @@ def tc_list_courses_with_widget(orgId: str, access_token: str, limit=None, si=No
     meta = courses_response.get("meta", {})
 
     total = meta.get("totalCourseCount", len(courses))
-    published_count = sum(1 for c in courses if c.get("publishStatus") == "PUBLISHED")
-    draft_count = len(courses) - published_count
+    published_count = meta.get("publishedCount", 0)
+    draft_count = meta.get("draftCount", 0)
 
-    # Build the result dict
-    result = {
+    return {
         "content": [
             {"type": "text", "text": f"You have {total} courses ({published_count} published, {draft_count} drafts)."}
         ],
         "structuredContent": {
             "summary": f"You have {total} courses."
         },
-        # **Important:** include fields at top-level of result
+        # ← these MUST be real fields
         "courses": courses,
         "totalCourseCount": total,
         "publishedCount": published_count,
         "draftCount": draft_count
     }
 
-    return result
 
 
 def tc_get_course(orgId: str, courseId: str, access_token: str):
