@@ -273,12 +273,9 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             "result": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {
-                    "name": "trainercentral-fastmcp",
-                    "version": "1.0.0"
-                }
+                "serverInfo": {"name": "trainercentral-fastmcp", "version": "1.0.0"}
             }
-        }
+    }
     
     elif method == "resources/list":
         return {
@@ -289,7 +286,7 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     {
                         "uri": "ui://widget/courses.html",
                         "name": "Courses Widget",
-                        "description": "Interactive courses list",
+                        "description": "Interactive list of courses",
                         "mimeType": "text/html+skybridge"
                     },
                     {
@@ -300,73 +297,100 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     }
                 ]
             }
-        }
+    }
 
-    elif method == "resources/read":
-        # MCP protocol: Read a specific resource
-        resource_uri = params.get("uri")
+
+    # elif method == "resources/read":
+    #     # MCP protocol: Read a specific resource
+    #     resource_uri = params.get("uri")
         
-        if resource_uri == "ui://widget/courses.html":
-            # Read the widget content
-            widget_js_path = os.path.join(os.path.dirname(__file__), 'web/dist/courses-widget.js')
+    #     if resource_uri == "ui://widget/courses.html":
+    #         # Read the widget content
+    #         widget_js_path = os.path.join(os.path.dirname(__file__), 'web/dist/courses-widget.js')
             
+    #         try:
+    #             with open(widget_js_path, 'r', encoding='utf-8') as f:
+    #                 widget_js = f.read()
+    #         except FileNotFoundError:
+    #             return {
+    #                 "jsonrpc": "2.0",
+    #                 "id": request_id,
+    #                 "error": {"code": -32002, "message": "Widget not built"}
+    #             }
+            
+    #         html_template = f'''<!DOCTYPE html>
+    #         <html lang="en">
+    #         <head>
+    #             <meta charset="utf-8">
+    #             <meta name="viewport" content="width=device-width, initial-scale=1">
+    #             <style>
+    #                 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    #                 body {{ 
+    #                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    #                     background: #f8f9fa;
+    #                 }}
+    #                 #root {{ width: 100%; min-height: 100vh; }}
+    #             </style>
+    #         </head>
+    #         <body>
+    #             <div id="root"></div>
+    #             <script type="module">{widget_js}</script>
+    #         </body>
+    #         </html>'''
+            
+    #         return {
+    #             "jsonrpc": "2.0",
+    #             "id": request_id,
+    #             "result": {
+    #                 "contents": [
+    #                     {
+    #                         "uri": "ui://widget/courses.html",
+    #                         "mimeType": "text/html+skybridge",
+    #                         "text": html_template,
+    #                         "_meta": {
+    #                             "openai/widgetPrefersBorder": True,
+    #                             "openai/widgetDomain": MCP_SERVER_URL,
+    #                             "openai/widgetCSP": {
+    #                                 "connect_domains": [TC_API_BASE_URL, MCP_SERVER_URL],
+    #                                 "resource_domains": ["https://*.oaistatic.com"]
+    #                             }
+    #                         }
+    #                     }
+    #                 ]
+    #             }
+    #         }
+    #     else:
+    #         return {
+    #             "jsonrpc": "2.0",
+    #             "id": request_id,
+    #             "error": {"code": -32002, "message": f"Resource not found: {resource_uri}"}
+    #         }
+    elif method == "resources/read":
+        resource_uri = params.get("uri")
+
+        # Courses widget
+        if resource_uri == "ui://widget/courses.html":
+            widget_path = os.path.join(os.path.dirname(__file__), "web/dist/courses-widget.js")
             try:
-                with open(widget_js_path, 'r', encoding='utf-8') as f:
+                with open(widget_path, "r", encoding="utf-8") as f:
                     widget_js = f.read()
             except FileNotFoundError:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "error": {"code": -32002, "message": "Widget not built"}
-                }
-            
-            html_template = f'''<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-                    body {{ 
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                        background: #f8f9fa;
-                    }}
-                    #root {{ width: 100%; min-height: 100vh; }}
-                </style>
-            </head>
-            <body>
-                <div id="root"></div>
-                <script type="module">{widget_js}</script>
-            </body>
-            </html>'''
-            
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "contents": [
-                        {
-                            "uri": "ui://widget/courses.html",
-                            "mimeType": "text/html+skybridge",
-                            "text": html_template,
-                            "_meta": {
-                                "openai/widgetPrefersBorder": True,
-                                "openai/widgetDomain": MCP_SERVER_URL,
-                                "openai/widgetCSP": {
-                                    "connect_domains": [TC_API_BASE_URL, MCP_SERVER_URL],
-                                    "resource_domains": ["https://*.oaistatic.com"]
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-        else:
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "error": {"code": -32002, "message": f"Resource not found: {resource_uri}"}
-            }
+                return {"jsonrpc":"2.0","id":request_id,"error":{"code":-32002,"message":"Courses widget not built"}}
+            html = f"<html><body><div id='root'></div><script type='module'>{widget_js}</script></body></html>"
+            return {"jsonrpc":"2.0","id":request_id,"result":{"contents":[{"uri":resource_uri,"mimeType":"text/html+skybridge","text":html}]}}
+
+        # Course details widget
+        if resource_uri == "ui://widget/course-details.html":
+            widget_path = os.path.join(os.path.dirname(__file__), "web/dist/course-details.js")
+            try:
+                with open(widget_path, "r", encoding="utf-8") as f:
+                    widget_js = f.read()
+            except FileNotFoundError:
+                return {"jsonrpc":"2.0","id":request_id,"error":{"code":-32002,"message":"Course details widget not built"}}
+            html = f"<html><body><div id='root'></div><script type='module'>{widget_js}</script></body></html>"
+            return {"jsonrpc":"2.0","id":request_id,"result":{"contents":[{"uri":resource_uri,"mimeType":"text/html+skybridge","text":html}]}}
+
+        return {"jsonrpc":"2.0","id":request_id,"error":{"code":-32002,"message":f"Resource not found: {resource_uri}"}} 
 
 
     elif method == "tools/list":
@@ -389,41 +413,21 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                 }
             },
             {
-                "name": "tc_get_course",
-                "description": "Get course details (widget-enabled)",
-                "inputSchema": {
-                    "orgId": {"type": "string"},
-                    "courseId": {"type": "string"}
-                },
-                "_meta": {
-                    "openai/outputTemplate": "ui://widget/course-details.html",
-                    "openai/widgetAccessible": True,
-                    "openai/toolInvocation": {
-                        "invoking": "Fetching course details...",
-                        "invoked": "Course details loaded."
-                    }
+                "name":"tc_get_course",
+                "description":"Get course details with widget UI",
+                "inputSchema":{"type":"object","properties":{"orgId":{"type":"string"},"courseId":{"type":"string"}},"required":["orgId","courseId"]},
+                "_meta":{
+                    "openai/outputTemplate":"ui://widget/course-details.html",
+                    "openai/widgetAccessible":True
                 }
             },
-            {
-                "name": "tc_list_courses_with_widget",
-                "description": "List all courses with an interactive widget UI. Shows courses in a grid with filters, sorting, and management options.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {
-                            "type": "string",
-                            "description": "Organization ID from tc_get_org_id"
-                        }
-                    },
-                    "required": ["orgId"]
-                },
-                "_meta": {
-                    "openai/outputTemplate": "ui://widget/courses.html",
-                    "openai/widgetAccessible": True, 
-                    "openai/toolInvocation": {
-                        "invoking": "Loading your courses...",
-                        "invoked": "Courses loaded successfully"
-                    }
+             {
+                "name":"tc_list_courses_with_widget",
+                "description":"List courses with widget UI",
+                "inputSchema":{"type":"object","properties":{"orgId":{"type":"string"}},"required":["orgId"]},
+                "_meta":{
+                    "openai/outputTemplate":"ui://widget/courses.html",
+                    "openai/widgetAccessible":True
                 }
             },
             {
@@ -687,139 +691,34 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
         }
     
     elif method == "tools/call":
-        # Check authentication
         if not authorization or not authorization.startswith("Bearer "):
-            logger.warning("No authorization header")
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"type": "text", "text": "Authentication required"}],
-                    "isError": True
-                }
-            }
-        
-        # Extract access token
-        access_token = authorization.replace("Bearer ", "").strip()
-        logger.info(f"Access token: {access_token[:20]}...")
-        
-        # Get tool info
+            return {"jsonrpc":"2.0","id":request_id,"result":{"content":[{"type":"text","text":"Authentication required"}],"isError":True}}
+
+        access_token = authorization.split("Bearer ")[-1].strip()
         tool_name = params.get("name")
         arguments = params.get("arguments", {})
-        
-        logger.info(f"Tool: {tool_name}")
-        logger.info(f"Args from ChatGPT: {arguments}")
-        
-        # Special handling for tc_get_org_id
-        if tool_name == "tc_get_org_id":
-            arguments["access_token"] = access_token
-            logger.info("Special handling for tc_get_org_id")
-        else:
-            # For all other tools
-            arguments["access_token"] = access_token
-            
-            # Verify orgId was provided
-            if "orgId" not in arguments:
-                logger.warning(f"⚠️ Tool {tool_name} called without orgId!")
-                return {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "result": {
-                        "content": [{"type": "text", "text": "orgId required. Call tc_get_org_id() first."}],
-                        "isError": True
-                    }
-                }
-        
-        logger.info(f"Final args: {arguments}")
-        
-        # Call the tool
-        try:
-            if tool_name not in TOOL_REGISTRY:
-                logger.error(f"Tool not found: {tool_name}")
-                return {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"}
-                }
-            
-            tool_func = TOOL_REGISTRY[tool_name]
-            result = tool_func(**arguments)
-            
-            logger.info(f"✅ Tool {tool_name} executed successfully")
-            logger.info(f"Result keys: {result.keys() if isinstance(result, dict) else type(result)}")
-            
-            # =====================================================================
-            # CRITICAL FIX: Proper MCP Response Format
-            # =====================================================================
-            
-            # Check if this is a widget-enabled response (has _meta)
-            if isinstance(result, dict) and "_meta" in result:
-                logger.info("Widget-enabled response detected")
-                
-                # Return in proper MCP format
-                mcp_response = {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "result": {
-                        # content: For the model's response
-                        "content": result.get("content", [
-                            {"type": "text", "text": "Operation completed"}
-                        ]),
-                        
-                        # isError: false (success)
-                        "isError": False
-                    }
-                }
-                
-                # Add structuredContent if present (for model)
-                if "structuredContent" in result:
-                    mcp_response["result"]["structuredContent"] = result["structuredContent"]
-                    logger.info(f"Added structuredContent: {result['structuredContent']}")
-                
-                # Add _meta if present (for widget ONLY)
-                if "_meta" in result:
-                    # IMPORTANT: Merge _meta at the result level, not in content!
-                    mcp_response["result"].update(result["_meta"])
-                    logger.info(f"Added _meta keys: {list(result['_meta'].keys())}")
-                
-                logger.info(f"Final MCP response keys: {mcp_response['result'].keys()}")
-                return mcp_response
-                
-            else:
-                # Regular non-widget response
-                logger.info("Regular (non-widget) response")
-                
-                return {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "result": {
-                        "content": [
-                            {"type": "text", "text": json.dumps(result, indent=2)}
-                        ]
-                    }
-                }
-            
-        except TypeError as e:
-            logger.error(f"❌ TypeError: {str(e)}")
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"type": "text", "text": f"Parameter mismatch: {str(e)}"}],
-                    "isError": True
-                }
-            }
-        except Exception as e:
-            logger.error(f"❌ Error: {str(e)}", exc_info=True)
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"type": "text", "text": f"Error: {str(e)}"}],
-                    "isError": True
-                }
-            }
+        arguments["access_token"] = access_token
 
+        if tool_name != "tc_get_org_id" and "orgId" not in arguments:
+            return {"jsonrpc":"2.0","id":request_id,"result":{"content":[{"type":"text","text":"orgId required"}],"isError":True}}
+
+        func = TOOL_REGISTRY.get(tool_name)
+        if not func:
+            return {"jsonrpc":"2.0","id":request_id,"error":{"code":-32601,"message":"Tool not found"}}
+
+        try:
+            result = func(**arguments)
+        except Exception as e:
+            return {"jsonrpc":"2.0","id":request_id,"result":{"content":[{"type":"text","text":str(e)}],"isError":True}}
+
+        if isinstance(result, dict) and "_meta" in result:
+            mcp_result = {"jsonrpc":"2.0","id":request_id,"result":{"content":result.get("content",[]),"isError":False}}
+            if "structuredContent" in result:
+                mcp_result["result"]["structuredContent"] = result["structuredContent"]
+            mcp_result["result"].update(result["_meta"])
+            return mcp_result
+
+        return {"jsonrpc":"2.0","id":request_id,"result":{"content":[{"type":"text","text":json.dumps(result)}]}}
 
 
 
