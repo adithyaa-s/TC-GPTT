@@ -1412,45 +1412,86 @@
 
 // export default CoursesWidget;
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { createRoot } from "react-dom/client";
+import { useSyncExternalStore } from "react";
+
+// ----------------------------------------------
+// Official Apps SDK hook for globals
+// ----------------------------------------------
 
 const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
 
 function useOpenAiGlobal(key) {
-  const [val, setVal] = useState(window.openai?.[key]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      const globals = e.detail?.globals || {};
-      if (globals[key] !== undefined) setVal(globals[key]);
-    };
-    window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler);
-    return () => window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
-  }, [key]);
-
-  return val;
+  return useSyncExternalStore(
+    (onChange) => {
+      const handler = (event) => {
+        const value = event.detail?.globals?.[key];
+        if (value !== undefined) {
+          onChange();
+        }
+      };
+      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+      return () => {
+        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+      };
+    },
+    () => window.openai?.[key],
+    () => window.openai?.[key]
+  );
 }
 
 function CoursesWidget() {
+  // Grab metadata from window.openai
   const metadata = useOpenAiGlobal("toolResponseMetadata");
-  const courses = metadata?.courses || [];
 
-  if (!metadata) return <div>Loading courses…</div>;
-  if (courses.length === 0) return <div>No courses found</div>;
+  // Memoized course list so repeated renders don’t repaint unnecessarily
+  const courses = useMemo(() => metadata?.courses || [], [metadata]);
+
+  // If metadata hasn’t arrived yet, show a proper loading state
+  if (metadata === undefined) {
+    return (
+      <div style={{ padding: 12, fontFamily: "Arial, sans-serif" }}>
+        Loading courses…
+      </div>
+    );
+  }
+
+  // If there are no courses, show fallback UI
+  if (!Array.isArray(courses) || courses.length === 0) {
+    return (
+      <div style={{ padding: 12, fontFamily: "Arial, sans-serif" }}>
+        No courses found
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h3>Course List</h3>
-      {courses.map((c, i) => (
-        <div key={i}>
-          <strong>{c.name}</strong><br />
-          ID: {c.courseId || c.id}
+    <div style={{ padding: 12, fontFamily: "Arial, sans-serif" }}>
+      <h3 style={{ margin: "0 0 8px 0" }}>Your Courses</h3>
+      {courses.map((course, index) => (
+        <div
+          key={index}
+          style={{
+            borderBottom: "1px solid #ddd",
+            padding: "8px 0"
+          }}
+        >
+          <div style={{ fontWeight: "bold" }}>
+            {course.courseName || course.name || "Untitled Course"}
+          </div>
+          <div style={{ fontSize: 12, color: "#555" }}>
+            ID: {course.courseId || course.id || "—"}
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-const root = createRoot(document.getElementById("root"));
-root.render(<CoursesWidget />);
+// Mount the widget into the page
+const container = document.getElementById("root");
+if (container) {
+  const root = createRoot(container);
+  root.render(<CoursesWidget />);
+}
