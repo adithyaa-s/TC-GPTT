@@ -948,279 +948,279 @@ function normalizeCourse(raw: RawCourse): Course {
 // Main Widget
 // ----------------------------------------------
 
-function CoursesWidget() {
-  log("info", "Widget mounting");
+// function CoursesWidget() {
+//   log("info", "Widget mounting");
 
-  // --- Subscribe to MCP data via hooks ---
-  const toolOutput = useOpenAiGlobal("toolOutput");
-  const metadata = useOpenAiGlobal("toolResponseMetadata");
+//   // --- Subscribe to MCP data via hooks ---
+//   const toolOutput = useOpenAiGlobal("toolOutput");
+//   const metadata = useOpenAiGlobal("toolResponseMetadata");
 
-  log("info", "Received toolOutput snapshot", toolOutput);
+//   log("info", "Received toolOutput snapshot", toolOutput);
 
-  // --- Widget UI state (persistent) ---
-  const [state, setState] = useState<WidgetState>(
-    window.openai?.widgetState ?? {
-      viewMode: "grid",
-      sortBy: "created",
-      filterBy: "all",
-      searchQuery: "",
-    }
-  );
+//   // --- Widget UI state (persistent) ---
+//   const [state, setState] = useState<WidgetState>(
+//     window.openai?.widgetState ?? {
+//       viewMode: "grid",
+//       sortBy: "created",
+//       filterBy: "all",
+//       searchQuery: "",
+//     }
+//   );
 
-  const updateState = (patch: Partial<WidgetState>) => {
-    const next = { ...state, ...patch };
-    setState(next);
-    window.openai?.setWidgetState?.(next);
-  };
+//   const updateState = (patch: Partial<WidgetState>) => {
+//     const next = { ...state, ...patch };
+//     setState(next);
+//     window.openai?.setWidgetState?.(next);
+//   };
 
-  // --- Data extraction: read courses from top-level `toolOutput.courses` ---
-  let rawCourses: RawCourse[] = [];
+//   // --- Data extraction: read courses from top-level `toolOutput.courses` ---
+//   let rawCourses: RawCourse[] = [];
 
-  if (Array.isArray(toolOutput?.courses)) {
-    rawCourses = toolOutput.courses;
-  }
+//   if (Array.isArray(toolOutput?.courses)) {
+//     rawCourses = toolOutput.courses;
+//   }
 
-  log("info", `Raw courses received: ${rawCourses.length}`);
+//   log("info", `Raw courses received: ${rawCourses.length}`);
 
-  const courses = useMemo(() => {
-    const normalized = rawCourses.map((c, idx) => {
-      try {
-        return normalizeCourse(c);
-      } catch (e) {
-        log("warn", `Failed to normalize course at index ${idx}`, c);
-        return normalizeCourse({});
-      }
-    });
-    log("info", `Normalized courses: ${normalized.length}`);
-    return normalized;
-  }, [rawCourses]);
+//   const courses = useMemo(() => {
+//     const normalized = rawCourses.map((c, idx) => {
+//       try {
+//         return normalizeCourse(c);
+//       } catch (e) {
+//         log("warn", `Failed to normalize course at index ${idx}`, c);
+//         return normalizeCourse({});
+//       }
+//     });
+//     log("info", `Normalized courses: ${normalized.length}`);
+//     return normalized;
+//   }, [rawCourses]);
 
-  // --- Filtering / sorting logic ---
-  const filteredCourses = useMemo(() => {
-    let list = [...courses];
+//   // --- Filtering / sorting logic ---
+//   const filteredCourses = useMemo(() => {
+//     let list = [...courses];
 
-    if (state.filterBy === "published")
-      list = list.filter((c) => c.publishStatus === "PUBLISHED");
-    if (state.filterBy === "draft")
-      list = list.filter((c) => c.publishStatus !== "PUBLISHED");
+//     if (state.filterBy === "published")
+//       list = list.filter((c) => c.publishStatus === "PUBLISHED");
+//     if (state.filterBy === "draft")
+//       list = list.filter((c) => c.publishStatus !== "PUBLISHED");
 
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
-      list = list.filter((c) =>
-        c.courseName.toLowerCase().includes(q)
-      );
-    }
+//     if (state.searchQuery) {
+//       const q = state.searchQuery.toLowerCase();
+//       list = list.filter((c) =>
+//         c.courseName.toLowerCase().includes(q)
+//       );
+//     }
 
-    list.sort((a, b) => {
-      if (state.sortBy === "name")
-        return a.courseName.localeCompare(b.courseName);
-      if (state.sortBy === "enrolled")
-        return b.enrolledCount - a.enrolledCount;
-      return b.createdTime - a.createdTime;
-    });
+//     list.sort((a, b) => {
+//       if (state.sortBy === "name")
+//         return a.courseName.localeCompare(b.courseName);
+//       if (state.sortBy === "enrolled")
+//         return b.enrolledCount - a.enrolledCount;
+//       return b.createdTime - a.createdTime;
+//     });
 
-    return list;
-  }, [courses, state]);
+//     return list;
+//   }, [courses, state]);
 
-  log("info", "Render phase start");
+//   log("info", "Render phase start");
 
-  // --- Loading / empty states ---
-  if (toolOutput === undefined && metadata === undefined) {
-    return <div style={styles.loading}>Loading courses…</div>;
-  }
+//   // --- Loading / empty states ---
+//   if (toolOutput === undefined && metadata === undefined) {
+//     return <div style={styles.loading}>Loading courses…</div>;
+//   }
 
-  if (filteredCourses.length === 0) {
-    return (
-      <div style={styles.empty}>
-        <h3>No courses found</h3>
-        <button
-          onClick={() =>
-            window.openai?.sendFollowUpMessage?.({
-              prompt: "Create a new course",
-            })
-          }
-        >
-          Create Course
-        </button>
-      </div>
-    );
-  }
+//   if (filteredCourses.length === 0) {
+//     return (
+//       <div style={styles.empty}>
+//         <h3>No courses found</h3>
+//         <button
+//           onClick={() =>
+//             window.openai?.sendFollowUpMessage?.({
+//               prompt: "Create a new course",
+//             })
+//           }
+//         >
+//           Create Course
+//         </button>
+//       </div>
+//     );
+//   }
 
-  // --- Final render ---
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h2>Courses ({filteredCourses.length})</h2>
-        <button
-          onClick={() =>
-            window.openai?.sendFollowUpMessage?.({
-              prompt: "Create a new course",
-            })
-          }
-        >
-          + Create
-        </button>
-      </header>
+//   // --- Final render ---
+//   return (
+//     <div style={styles.container}>
+//       <header style={styles.header}>
+//         <h2>Courses ({filteredCourses.length})</h2>
+//         <button
+//           onClick={() =>
+//             window.openai?.sendFollowUpMessage?.({
+//               prompt: "Create a new course",
+//             })
+//           }
+//         >
+//           + Create
+//         </button>
+//       </header>
 
-      <div style={styles.controls}>
-        <input
-          placeholder="Search"
-          value={state.searchQuery}
-          onChange={(e) =>
-            updateState({ searchQuery: e.target.value })
-          }
-        />
+//       <div style={styles.controls}>
+//         <input
+//           placeholder="Search"
+//           value={state.searchQuery}
+//           onChange={(e) =>
+//             updateState({ searchQuery: e.target.value })
+//           }
+//         />
 
-        <select
-          value={state.filterBy}
-          onChange={(e) =>
-            updateState({ filterBy: e.target.value as FilterBy })
-          }
-        >
-          <option value="all">All</option>
-          <option value="published">Published</option>
-          <option value="draft">Draft</option>
-        </select>
+//         <select
+//           value={state.filterBy}
+//           onChange={(e) =>
+//             updateState({ filterBy: e.target.value as FilterBy })
+//           }
+//         >
+//           <option value="all">All</option>
+//           <option value="published">Published</option>
+//           <option value="draft">Draft</option>
+//         </select>
 
-        <select
-          value={state.sortBy}
-          onChange={(e) =>
-            updateState({ sortBy: e.target.value as SortBy })
-          }
-        >
-          <option value="created">Created</option>
-          <option value="name">Name</option>
-          <option value="enrolled">Enrolled</option>
-        </select>
+//         <select
+//           value={state.sortBy}
+//           onChange={(e) =>
+//             updateState({ sortBy: e.target.value as SortBy })
+//           }
+//         >
+//           <option value="created">Created</option>
+//           <option value="name">Name</option>
+//           <option value="enrolled">Enrolled</option>
+//         </select>
 
-        <button
-          onClick={() =>
-            updateState({
-              viewMode:
-                state.viewMode === "grid" ? "list" : "grid",
-            })
-          }
-        >
-          {state.viewMode === "grid" ? "☰" : "⊞"}
-        </button>
-      </div>
+//         <button
+//           onClick={() =>
+//             updateState({
+//               viewMode:
+//                 state.viewMode === "grid" ? "list" : "grid",
+//             })
+//           }
+//         >
+//           {state.viewMode === "grid" ? "☰" : "⊞"}
+//         </button>
+//       </div>
 
-      <div
-        style={
-          state.viewMode === "grid" ? styles.grid : styles.list
-        }
-      >
-        {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.courseId}
-            course={course}
-            viewMode={state.viewMode}
-            onClick={() =>
-              window.openai?.sendFollowUpMessage?.({
-                prompt: `Show details for course ${course.courseName}`,
-              })
-            }
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+//       <div
+//         style={
+//           state.viewMode === "grid" ? styles.grid : styles.list
+//         }
+//       >
+//         {filteredCourses.map((course) => (
+//           <CourseCard
+//             key={course.courseId}
+//             course={course}
+//             viewMode={state.viewMode}
+//             onClick={() =>
+//               window.openai?.sendFollowUpMessage?.({
+//                 prompt: `Show details for course ${course.courseName}`,
+//               })
+//             }
+//           />
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
 
-// ----------------------------------------------
-// CourseCard component
-// ----------------------------------------------
+// // ----------------------------------------------
+// // CourseCard component
+// // ----------------------------------------------
 
-function CourseCard({
-  course,
-  viewMode,
-  onClick,
-}: {
-  course: Course;
-  viewMode: ViewMode;
-  onClick: () => void;
-}) {
-  const gradient =
-    gradients[course.courseName.length % gradients.length];
+// function CourseCard({
+//   course,
+//   viewMode,
+//   onClick,
+// }: {
+//   course: Course;
+//   viewMode: ViewMode;
+//   onClick: () => void;
+// }) {
+//   const gradient =
+//     gradients[course.courseName.length % gradients.length];
 
-  return (
-    <div
-      style={{
-        ...styles.card,
-        background: viewMode === "grid" ? "white" : undefined,
-      }}
-      onClick={onClick}
-    >
-      <div
-        style={{ ...styles.thumb, background: gradient }}
-      >
-        📘
-      </div>
-      <div style={styles.cardBody}>
-        <strong>{course.courseName}</strong>
-        {course.subTitle && (
-          <div style={styles.subtitle}>{course.subTitle}</div>
-        )}
-        <div style={styles.meta}>
-          👥 {course.enrolledCount} · ⭐ {course.rating}
-        </div>
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div
+//       style={{
+//         ...styles.card,
+//         background: viewMode === "grid" ? "white" : undefined,
+//       }}
+//       onClick={onClick}
+//     >
+//       <div
+//         style={{ ...styles.thumb, background: gradient }}
+//       >
+//         📘
+//       </div>
+//       <div style={styles.cardBody}>
+//         <strong>{course.courseName}</strong>
+//         {course.subTitle && (
+//           <div style={styles.subtitle}>{course.subTitle}</div>
+//         )}
+//         <div style={styles.meta}>
+//           👥 {course.enrolledCount} · ⭐ {course.rating}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 
-// ----------------------------------------------
-// Styles
-// ----------------------------------------------
+// // ----------------------------------------------
+// // Styles
+// // ----------------------------------------------
 
-const gradients = [
-  "linear-gradient(135deg,#ffecd2,#fcb69f)",
-  "linear-gradient(135deg,#a8edea,#fed6e3)",
-  "linear-gradient(135deg,#fbc2eb,#a6c1ee)",
-];
+// const gradients = [
+//   "linear-gradient(135deg,#ffecd2,#fcb69f)",
+//   "linear-gradient(135deg,#a8edea,#fed6e3)",
+//   "linear-gradient(135deg,#fbc2eb,#a6c1ee)",
+// ];
 
-const styles: Record<string, React.CSSProperties> = {
-  container: { padding: 16, fontFamily: "system-ui" },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  controls: { display: "flex", gap: 8, marginBottom: 12 },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
-    gap: 12,
-  },
-  list: { display: "flex", flexDirection: "column", gap: 8 },
-  card: {
-    borderRadius: 8,
-    boxShadow: "0 2px 6px rgba(0,0,0,.08)",
-    cursor: "pointer",
-    overflow: "hidden",
-  },
-  thumb: {
-    height: 100,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 32,
-  },
-  cardBody: { padding: 12 },
-  subtitle: { fontSize: 12, color: "#666" },
-  meta: { fontSize: 12, marginTop: 6, color: "#555" },
-  loading: { padding: 40, textAlign: "center" },
-  empty: { padding: 40, textAlign: "center" },
-};
+// const styles: Record<string, React.CSSProperties> = {
+//   container: { padding: 16, fontFamily: "system-ui" },
+//   header: {
+//     display: "flex",
+//     justifyContent: "space-between",
+//     marginBottom: 12,
+//   },
+//   controls: { display: "flex", gap: 8, marginBottom: 12 },
+//   grid: {
+//     display: "grid",
+//     gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+//     gap: 12,
+//   },
+//   list: { display: "flex", flexDirection: "column", gap: 8 },
+//   card: {
+//     borderRadius: 8,
+//     boxShadow: "0 2px 6px rgba(0,0,0,.08)",
+//     cursor: "pointer",
+//     overflow: "hidden",
+//   },
+//   thumb: {
+//     height: 100,
+//     display: "flex",
+//     alignItems: "center",
+//     justifyContent: "center",
+//     fontSize: 32,
+//   },
+//   cardBody: { padding: 12 },
+//   subtitle: { fontSize: 12, color: "#666" },
+//   meta: { fontSize: 12, marginTop: 6, color: "#555" },
+//   loading: { padding: 40, textAlign: "center" },
+//   empty: { padding: 40, textAlign: "center" },
+// };
 
-// ----------------------------------------------
-// Mount
-// ----------------------------------------------
+// // ----------------------------------------------
+// // Mount
+// // ----------------------------------------------
 
-const root = document.getElementById("root");
-if (root) createRoot(root).render(<CoursesWidget />);
+// const root = document.getElementById("root");
+// if (root) createRoot(root).render(<CoursesWidget />);
 
-export default CoursesWidget;
+// export default CoursesWidget;
 
 
 // V2
@@ -1349,3 +1349,63 @@ export default CoursesWidget;
 
 // const root = document.getElementById("root");
 // if (root) createRoot(root).render(<CoursesWidget />);
+
+import React, { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
+
+function CoursesWidget() {
+  const [courses, setCourses] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const output = window.openai?.toolOutput;
+    console.log("Courses widget toolOutput:", output);
+    
+    // Full data is in _meta.courses
+    const all = output?._meta?.courses ?? [];
+    setCourses(Array.isArray(all) ? all : []);
+  }, []);
+  
+  if (!courses) {
+    return <div className="loading">Loading courses…</div>;
+  }
+
+  return (
+    <div className="widget-container">
+      <h2>Courses ({courses.length})</h2>
+      {courses.length === 0 && (
+        <p>No courses found.</p>
+      )}
+      
+      {courses.map((course: any) => (
+        <div key={course.courseId || course.id} className="card">
+          <h3>{course.courseName || course.name}</h3>
+          <div className="flex justify-between align-center">
+            <span className={`badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`}>
+              {course.publishStatus || course.status || "Unknown"}
+            </span>
+            <span>👥 {course.enrolledCount ?? course.enrolled ?? 0}</span>
+          </div>
+          
+          <button
+            className="button"
+            onClick={async () => {
+              // Calls tc_get_course and loads CourseDetailsWidget
+              await window.openai?.callTool("tc_get_course", {
+                courseId: course.courseId || course.id,
+                orgId: course.orgId || course.orgId, 
+              });
+            }}
+          >
+            View Details
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const root = document.getElementById("root");
+if (root) createRoot(root).render(<CoursesWidget />);
+
+export default CoursesWidget;

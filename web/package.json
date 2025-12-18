@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "ChatGPT widget for TrainerCentral courses",
   "scripts": {
-  "build": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx",
+  "build": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx && esbuild src/CourseDetailsWidget.tsx --bundle --format=esm --outfile=dist/course-details.js --jsx=automatic --loader:.tsx=tsx",
   "watch": "esbuild src/CoursesWidget.tsx --bundle --format=esm --outfile=dist/courses-widget.js --jsx=automatic --loader:.tsx=tsx --watch"
 },
   "dependencies": {

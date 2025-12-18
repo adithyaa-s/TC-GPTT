@@ -1137,7 +1137,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useId();
         }
-        function useSyncExternalStore2(subscribe, getSnapshot, getServerSnapshot) {
+        function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
         }
@@ -1887,7 +1887,7 @@ var require_react_development = __commonJS({
         exports.useReducer = useReducer;
         exports.useRef = useRef;
         exports.useState = useState2;
-        exports.useSyncExternalStore = useSyncExternalStore2;
+        exports.useSyncExternalStore = useSyncExternalStore;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop === "function") {
@@ -24456,60 +24456,89 @@ var require_jsx_runtime = __commonJS({
   }
 });
 
-// src/CoursesWidget.tsx
+// src/CourseDetailsWidget.tsx
 var import_react = __toESM(require_react());
-var import_react2 = __toESM(require_react());
 var import_client = __toESM(require_client());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
-function CoursesWidget() {
-  const [courses, setCourses] = (0, import_react2.useState)([]);
-  (0, import_react2.useEffect)(() => {
+function CourseDetailsWidget() {
+  const [course, setCourse] = (0, import_react.useState)(null);
+  (0, import_react.useEffect)(() => {
     const output = window.openai?.toolOutput;
-    console.log("Courses widget toolOutput:", output);
-    const all = output?._meta?.courses ?? [];
-    setCourses(Array.isArray(all) ? all : []);
+    const meta = window.openai?.toolResponseMetadata ?? {};
+    console.log("Course details widget toolOutput:", output, "meta:", meta);
+    const full = meta?.course ?? output?._meta?.course ?? output?.course;
+    setCourse(full || null);
   }, []);
-  if (!courses) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "loading", children: "Loading courses\u2026" });
+  if (!course) {
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "loading", children: "Loading course details\u2026" });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "widget-container", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h2", { children: [
-      "Courses (",
-      courses.length,
-      ")"
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: course.courseName || course.name }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`, children: course.publishStatus || course.status || "Status Unknown" }),
+    course.subTitle && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "mt-1", children: course.subTitle }),
+    course.description && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "mt-2", children: course.description }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-2", children: [
+      "\u{1F465} Enrolled: ",
+      course.enrolledCount ?? course.enrolled ?? 0
     ] }),
-    courses.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No courses found." }),
-    courses.map((course) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: course.courseName || course.name }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex justify-between align-center", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`, children: course.publishStatus || course.status || "Unknown" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-          "\u{1F465} ",
-          course.enrolledCount ?? course.enrolled ?? 0
-        ] })
-      ] }),
+    course.createdTime && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-1", children: [
+      "\u{1F4C5} Created: ",
+      new Date(course.createdTime).toLocaleDateString()
+    ] }),
+    course.lastUpdatedTime && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-1", children: [
+      "\u{1F504} Updated: ",
+      new Date(course.lastUpdatedTime).toLocaleDateString()
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-2 flex flex-row gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "button",
         {
           className: "button",
           onClick: async () => {
-            await window.openai?.callTool("tc_get_course", {
+            await window.openai?.callTool("tc_update_course", {
               courseId: course.courseId || course.id,
-              orgId: course.orgId || course.orgId
+              orgId: course.orgId,
+              updates: {}
             });
           },
-          children: "View Details"
+          children: "Edit Course"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          className: "button",
+          onClick: async () => {
+            await window.openai?.callTool("tc_get_course_lessons", {
+              courseId: course.courseId || course.id,
+              orgId: course.orgId
+            });
+          },
+          children: "View Lessons"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          className: "button",
+          onClick: async () => {
+            await window.openai?.callTool("tc_get_course_chapters", {
+              courseId: course.courseId || course.id,
+              orgId: course.orgId
+            });
+          },
+          children: "View Chapters"
         }
       )
-    ] }, course.courseId || course.id))
+    ] })
   ] });
 }
 var root = document.getElementById("root");
 if (root)
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));
-var CoursesWidget_default = CoursesWidget;
+  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CourseDetailsWidget, {}));
+var CourseDetailsWidget_default = CourseDetailsWidget;
 export {
-  CoursesWidget_default as default
+  CourseDetailsWidget_default as default
 };
 /*! Bundled license information:
 

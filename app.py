@@ -158,6 +158,39 @@ async def courses_widget_resource():
         }
     )
 
+
+@app.get("/mcp/resource/course-details-widget.html")
+async def course_details_widget_resource():
+    widget_js_path = os.path.join(os.path.dirname(__file__), "web/dist/course-details.js")
+
+    try:
+        with open(widget_js_path, 'r', encoding='utf-8') as f:
+            widget_js = f.read()
+    except FileNotFoundError:
+        return JSONResponse(status_code=404, content={"error": "Widget not built."})
+
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>body{{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}}</style>
+    </head>
+    <body>
+      <div id="root"></div>
+      <script type="module">{widget_js}</script>
+    </body>
+    </html>
+    """
+
+    return Response(
+        content=html_template,
+        media_type="text/html+skybridge",
+        headers={"Cache-Control": "no-cache"}
+    )
+
+
 @app.get("/.well-known/oauth-protected-resource")
 async def oauth_metadata():
     return {
@@ -248,7 +281,6 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
         }
     
     elif method == "resources/list":
-    # MCP protocol: List available resources (widget templates)
         return {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -257,7 +289,13 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                     {
                         "uri": "ui://widget/courses.html",
                         "name": "Courses Widget",
-                        "description": "Interactive courses grid with filters and sorting",
+                        "description": "Interactive courses list",
+                        "mimeType": "text/html+skybridge"
+                    },
+                    {
+                        "uri": "ui://widget/course-details.html",
+                        "name": "Course Details Widget",
+                        "description": "Interactive course details view",
                         "mimeType": "text/html+skybridge"
                     }
                 ]
@@ -352,14 +390,18 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
             },
             {
                 "name": "tc_get_course",
-                "description": "Get course. Requires orgId.",
+                "description": "Get course details (widget-enabled)",
                 "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "courseId": {"type": "string"}
-                    },
-                    "required": ["orgId", "courseId"]
+                    "orgId": {"type": "string"},
+                    "courseId": {"type": "string"}
+                },
+                "_meta": {
+                    "openai/outputTemplate": "ui://widget/course-details.html",
+                    "openai/widgetAccessible": True,
+                    "openai/toolInvocation": {
+                        "invoking": "Fetching course details...",
+                        "invoked": "Course details loaded."
+                    }
                 }
             },
             {
