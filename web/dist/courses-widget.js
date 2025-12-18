@@ -24460,57 +24460,39 @@ var require_jsx_runtime = __commonJS({
 var import_react = __toESM(require_react());
 var import_client = __toESM(require_client());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
-function CoursesWidget() {
-  const [courses, setCourses] = (0, import_react.useState)([]);
+var SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+function useOpenAiGlobal(key) {
+  const [val, setVal] = (0, import_react.useState)(window.openai?.[key]);
   (0, import_react.useEffect)(() => {
-    const output = window.openai?.toolOutput;
-    console.log("Courses widget toolOutput:", output);
-    const all = output?._meta?.courses ?? [];
-    setCourses(Array.isArray(all) ? all : []);
-  }, []);
-  if (!courses) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "loading", children: "Loading courses\u2026" });
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "widget-container", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h2", { children: [
-      "Courses (",
-      courses.length,
-      ")"
-    ] }),
-    courses.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "No courses found." }),
-    courses.map((course) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: course.courseName || course.name }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex justify-between align-center", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`, children: course.publishStatus || course.status || "Unknown" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-          "\u{1F465} ",
-          course.enrolledCount ?? course.enrolled ?? 0
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          className: "button",
-          onClick: async () => {
-            await window.openai?.callTool("tc_get_course", {
-              courseId: course.courseId || course.id,
-              orgId: course.orgId || course.orgId
-            });
-          },
-          children: "View Details"
-        }
-      )
-    ] }, course.courseId || course.id))
+    const handler = (e) => {
+      const globals = e.detail?.globals || {};
+      if (globals[key] !== void 0)
+        setVal(globals[key]);
+    };
+    window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+    return () => window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+  }, [key]);
+  return val;
+}
+function CoursesWidget() {
+  const metadata = useOpenAiGlobal("toolResponseMetadata");
+  const courses = metadata?.courses || [];
+  if (!metadata)
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "Loading courses\u2026" });
+  if (courses.length === 0)
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "No courses found" });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "Course List" }),
+    courses.map((c, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: c.name }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
+      "ID: ",
+      c.courseId || c.id
+    ] }, i))
   ] });
 }
-var root = document.getElementById("root");
-console.log("WIDGET METADATA:", window.openai?.toolResponseMetadata);
-if (root)
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));
-var CoursesWidget_default = CoursesWidget;
-export {
-  CoursesWidget_default as default
-};
+var root = (0, import_client.createRoot)(document.getElementById("root"));
+root.render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));
 /*! Bundled license information:
 
 react/cjs/react.development.js:

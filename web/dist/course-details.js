@@ -24460,86 +24460,38 @@ var require_jsx_runtime = __commonJS({
 var import_react = __toESM(require_react());
 var import_client = __toESM(require_client());
 var import_jsx_runtime = __toESM(require_jsx_runtime());
-function CourseDetailsWidget() {
-  const [course, setCourse] = (0, import_react.useState)(null);
+var SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+function useOpenAiGlobal(key) {
+  const [val, setVal] = (0, import_react.useState)(window.openai?.[key]);
   (0, import_react.useEffect)(() => {
-    const output = window.openai?.toolOutput;
-    const meta = window.openai?.toolResponseMetadata ?? {};
-    console.log("Course details widget toolOutput:", output, "meta:", meta);
-    const full = meta?.course ?? output?._meta?.course ?? output?.course;
-    setCourse(full || null);
-  }, []);
-  if (!course) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "loading", children: "Loading course details\u2026" });
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "widget-container", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: course.courseName || course.name }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`, children: course.publishStatus || course.status || "Status Unknown" }),
-    course.subTitle && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "mt-1", children: course.subTitle }),
-    course.description && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "mt-2", children: course.description }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-2", children: [
-      "\u{1F465} Enrolled: ",
-      course.enrolledCount ?? course.enrolled ?? 0
+    const handler = (e) => {
+      const globals = e.detail?.globals || {};
+      if (globals[key] !== void 0)
+        setVal(globals[key]);
+    };
+    window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+    return () => window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+  }, [key]);
+  return val;
+}
+function CourseDetailsWidget() {
+  const metadata = useOpenAiGlobal("toolResponseMetadata");
+  const course = metadata?.course;
+  if (!metadata)
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "Loading\u2026" });
+  if (!course)
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "No details" });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: course.name }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { children: [
+      "ID: ",
+      course.courseId || course.id
     ] }),
-    course.createdTime && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-1", children: [
-      "\u{1F4C5} Created: ",
-      new Date(course.createdTime).toLocaleDateString()
-    ] }),
-    course.lastUpdatedTime && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-1", children: [
-      "\u{1F504} Updated: ",
-      new Date(course.lastUpdatedTime).toLocaleDateString()
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-2 flex flex-row gap-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          className: "button",
-          onClick: async () => {
-            await window.openai?.callTool("tc_update_course", {
-              courseId: course.courseId || course.id,
-              orgId: course.orgId,
-              updates: {}
-            });
-          },
-          children: "Edit Course"
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          className: "button",
-          onClick: async () => {
-            await window.openai?.callTool("tc_get_course_lessons", {
-              courseId: course.courseId || course.id,
-              orgId: course.orgId
-            });
-          },
-          children: "View Lessons"
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "button",
-        {
-          className: "button",
-          onClick: async () => {
-            await window.openai?.callTool("tc_get_course_chapters", {
-              courseId: course.courseId || course.id,
-              orgId: course.orgId
-            });
-          },
-          children: "View Chapters"
-        }
-      )
-    ] })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: course.description })
   ] });
 }
-var root = document.getElementById("root");
-if (root)
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CourseDetailsWidget, {}));
-var CourseDetailsWidget_default = CourseDetailsWidget;
-export {
-  CourseDetailsWidget_default as default
-};
+var root = (0, import_client.createRoot)(document.getElementById("root"));
+root.render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CourseDetailsWidget, {}));
 /*! Bundled license information:
 
 react/cjs/react.development.js:

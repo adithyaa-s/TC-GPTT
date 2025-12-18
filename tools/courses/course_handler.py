@@ -119,74 +119,74 @@ def tc_create_course(course_data: dict, orgId: str, access_token: str) -> dict:
 #     """
 #     return tc.get_course(courseId, orgId, access_token)
 
-def tc_get_course(courseId: str, orgId: str, access_token: str) -> dict:
-    """
-    Retrieve a course by its ID, returning a UI-widget enabled response.
+# def tc_get_course(courseId: str, orgId: str, access_token: str) -> dict:
+#     """
+#     Retrieve a course by its ID, returning a UI-widget enabled response.
 
-    The MCP response includes:
-      - structuredContent: concise summary for the model
-      - content: optional text for the model
-      - _meta: full course details for the widget
+#     The MCP response includes:
+#       - structuredContent: concise summary for the model
+#       - content: optional text for the model
+#       - _meta: full course details for the widget
 
-    Args:
-        courseId (str): ID of the course to retrieve.
-        orgId (str): Organization ID (from tc_get_org_id)
-        access_token (str): OAuth access token
+#     Args:
+#         courseId (str): ID of the course to retrieve.
+#         orgId (str): Organization ID (from tc_get_org_id)
+#         access_token (str): OAuth access token
 
-    Returns:
-        dict: MCP response with course info for both model and widget.
-    """
+#     Returns:
+#         dict: MCP response with course info for both model and widget.
+#     """
 
-    # Fetch the course details from the underlying library
-    try:
-        result = tc.get_course(courseId, orgId, access_token)
-    except Exception as e:
-        # In case of errors, return a structured error
-        error_msg = f"Failed to retrieve course {courseId}: {str(e)}"
-        return {
-            "structuredContent": {"summary": error_msg},
-            "content": [
-                {"type": "text", "text": error_msg}
-            ],
-            "isError": True
-        }
+#     # Fetch the course details from the underlying library
+#     try:
+#         result = tc.get_course(courseId, orgId, access_token)
+#     except Exception as e:
+#         # In case of errors, return a structured error
+#         error_msg = f"Failed to retrieve course {courseId}: {str(e)}"
+#         return {
+#             "structuredContent": {"summary": error_msg},
+#             "content": [
+#                 {"type": "text", "text": error_msg}
+#             ],
+#             "isError": True
+#         }
 
-    # Result from tc.get_course should be a dict with course details
-    course_obj = result if isinstance(result, dict) else {}
+#     # Result from tc.get_course should be a dict with course details
+#     course_obj = result if isinstance(result, dict) else {}
 
-    # Build a summary string for the model
-    course_name = course_obj.get("courseName") or course_obj.get("name") or courseId
-    summary_text = f"Details for course {course_name} (ID: {courseId})."
+#     # Build a summary string for the model
+#     course_name = course_obj.get("courseName") or course_obj.get("name") or courseId
+#     summary_text = f"Details for course {course_name} (ID: {courseId})."
 
-    # Return MCP widget-ready format
-    return {
-        # Model sees this
-        "structuredContent": {
-            "summary": summary_text,
-            # Optionally include core fields if you want the model to reason about them
-            "course": {
-                "id": course_obj.get("courseId") or course_obj.get("id") or courseId,
-                "name": course_obj.get("courseName") or course_obj.get("name") or "",
-                "description": course_obj.get("description") or "",
-                "subTitle": course_obj.get("subTitle") or "",
-                "status": course_obj.get("publishStatus") or "",
-                "enrolled": course_obj.get("enrolledCount", 0),
-            },
-        },
+#     # Return MCP widget-ready format
+#     return {
+#         # Model sees this
+#         "structuredContent": {
+#             "summary": summary_text,
+#             # Optionally include core fields if you want the model to reason about them
+#             "course": {
+#                 "id": course_obj.get("courseId") or course_obj.get("id") or courseId,
+#                 "name": course_obj.get("courseName") or course_obj.get("name") or "",
+#                 "description": course_obj.get("description") or "",
+#                 "subTitle": course_obj.get("subTitle") or "",
+#                 "status": course_obj.get("publishStatus") or "",
+#                 "enrolled": course_obj.get("enrolledCount", 0),
+#             },
+#         },
 
-        # Optional narrative for model
-        "content": [
-            {
-                "type": "text",
-                "text": summary_text
-            }
-        ],
+#         # Optional narrative for model
+#         "content": [
+#             {
+#                 "type": "text",
+#                 "text": summary_text
+#             }
+#         ],
 
-        # Widget sees full course details here
-        "_meta": {
-            "course": course_obj
-        }
-    }
+#         # Widget sees full course details here
+#         "_meta": {
+#             "course": course_obj
+#         }
+#     }
 
 
 
@@ -219,43 +219,67 @@ def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = 
     return tc.list_courses(orgId, access_token)
 
 
-def tc_list_courses_with_widget(orgId: str, access_token: str, limit=None, si=None):
+# def tc_list_courses_with_widget(orgId: str, access_token: str, limit=None, si=None):
 
+#     courses_response = tc.list_courses(orgId, access_token)
+
+#     courses = courses_response.get("courses", [])
+#     categories = courses_response.get("courseCategories", [])
+#     meta = courses_response.get("meta", {})
+#     total = meta.get("totalCourseCount", len(courses))
+
+#     draft_count = sum(1 for c in courses if c.get("publishStatus") in ["DRAFT", "NONE"])
+#     published_count = sum(1 for c in courses if c.get("publishStatus") == "PUBLISHED")
+
+#     return {
+#     "structuredContent": {
+#         "summary": f"You have {total} courses ({published_count} published, {draft_count} drafts)."
+#     },
+#     "content": [
+#         {"type": "text", "text": f"Here are your courses (Org: {orgId}):"}
+#     ],
+#     "_meta": {
+#         "courses": courses,                 # the actual courses array
+#         "courseCategories": categories,     # optional additional metadata
+#         "totalCourseCount": total,
+#         "stats": {
+#             "total": total,
+#             "published": published_count,
+#             "draft": draft_count
+#         }
+#     }
+# }
+
+def tc_list_courses_with_widget(orgId: str, access_token: str, limit=None, si=None):
     courses_response = tc.list_courses(orgId, access_token)
 
     courses = courses_response.get("courses", [])
-    categories = courses_response.get("courseCategories", [])
     meta = courses_response.get("meta", {})
     total = meta.get("totalCourseCount", len(courses))
 
-    draft_count = sum(1 for c in courses if c.get("publishStatus") in ["DRAFT", "NONE"])
-    published_count = sum(1 for c in courses if c.get("publishStatus") == "PUBLISHED")
-
     return {
-        # 👇 MODEL SEES THIS
-        "structuredContent": {
-            "summary": f"You have {total} courses ({published_count} published, {draft_count} drafts)."
-        },
-
+        "structuredContent": {"summary": f"You have {total} courses"},
         "content": [
-            {
-                "type": "text",
-                "text": f"Here are your courses (Org: {orgId}):"
-            }
+            {"type": "text", "text": f"Here are your courses:"}
         ],
-
-        # 👇 WIDGET SEES THIS (THIS WAS MISSING)
         "_meta": {
-            "courses": courses,
-            "courseCategories": categories,
-            "totalCourseCount": total,
-            "stats": {
-                "total": total,
-                "published": published_count,
-                "draft": draft_count
-            }
+            "courses": courses
         }
     }
+
+def tc_get_course(orgId: str, courseId: str, access_token: str):
+    course = tc.get_course(orgId, access_token, courseId)
+    return {
+        "structuredContent": {"summary": f"Details for {course.get('name')}"},
+        "content": [
+            {"type":"text","text":f"Details for {course.get('name')}"}
+        ],
+        "_meta": {
+            "course": course
+        }
+    }
+
+
 
 
 # # Plain version without widget

@@ -1351,63 +1351,106 @@
 // const root = document.getElementById("root");
 // if (root) createRoot(root).render(<CoursesWidget />);
 
+// import React, { useEffect, useState } from "react";
+// import { createRoot } from "react-dom/client";
+// import "./styles.css";
+
+// function CoursesWidget() {
+//   const [courses, setCourses] = useState<any[]>([]);
+  
+//   useEffect(() => {
+//     const output = window.openai?.toolOutput;
+//     console.log("Courses widget toolOutput:", output);
+    
+//     // Full data is in _meta.courses
+//     const all = output?._meta?.courses ?? [];
+//     setCourses(Array.isArray(all) ? all : []);
+//   }, []);
+  
+//   if (!courses) {
+//     return <div className="loading">Loading courses…</div>;
+//   }
+
+//   return (
+//     <div className="widget-container">
+//       <h2>Courses ({courses.length})</h2>
+//       {courses.length === 0 && (
+//         <p>No courses found.</p>
+//       )}
+      
+//       {courses.map((course: any) => (
+//         <div key={course.courseId || course.id} className="card">
+//           <h3>{course.courseName || course.name}</h3>
+//           <div className="flex justify-between align-center">
+//             <span className={`badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`}>
+//               {course.publishStatus || course.status || "Unknown"}
+//             </span>
+//             <span>👥 {course.enrolledCount ?? course.enrolled ?? 0}</span>
+//           </div>
+          
+//           <button
+//             className="button"
+//             onClick={async () => {
+//               // Calls tc_get_course and loads CourseDetailsWidget
+//               await window.openai?.callTool("tc_get_course", {
+//                 courseId: course.courseId || course.id,
+//                 orgId: course.orgId || course.orgId, 
+//               });
+//             }}
+//           >
+//             View Details
+//           </button>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
+
+// const root = document.getElementById("root");
+// console.log("WIDGET METADATA:", window.openai?.toolResponseMetadata);
+// if (root) createRoot(root).render(<CoursesWidget />);
+
+// export default CoursesWidget;
+
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import "./styles.css";
+
+const SET_GLOBALS_EVENT_TYPE = "openai:set_globals";
+
+function useOpenAiGlobal(key) {
+  const [val, setVal] = useState(window.openai?.[key]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const globals = e.detail?.globals || {};
+      if (globals[key] !== undefined) setVal(globals[key]);
+    };
+    window.addEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+    return () => window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handler);
+  }, [key]);
+
+  return val;
+}
 
 function CoursesWidget() {
-  const [courses, setCourses] = useState<any[]>([]);
-  
-  useEffect(() => {
-    const output = window.openai?.toolOutput;
-    console.log("Courses widget toolOutput:", output);
-    
-    // Full data is in _meta.courses
-    const all = output?._meta?.courses ?? [];
-    setCourses(Array.isArray(all) ? all : []);
-  }, []);
-  
-  if (!courses) {
-    return <div className="loading">Loading courses…</div>;
-  }
+  const metadata = useOpenAiGlobal("toolResponseMetadata");
+  const courses = metadata?.courses || [];
+
+  if (!metadata) return <div>Loading courses…</div>;
+  if (courses.length === 0) return <div>No courses found</div>;
 
   return (
-    <div className="widget-container">
-      <h2>Courses ({courses.length})</h2>
-      {courses.length === 0 && (
-        <p>No courses found.</p>
-      )}
-      
-      {courses.map((course: any) => (
-        <div key={course.courseId || course.id} className="card">
-          <h3>{course.courseName || course.name}</h3>
-          <div className="flex justify-between align-center">
-            <span className={`badge ${course.publishStatus === "PUBLISHED" ? "published" : "draft"}`}>
-              {course.publishStatus || course.status || "Unknown"}
-            </span>
-            <span>👥 {course.enrolledCount ?? course.enrolled ?? 0}</span>
-          </div>
-          
-          <button
-            className="button"
-            onClick={async () => {
-              // Calls tc_get_course and loads CourseDetailsWidget
-              await window.openai?.callTool("tc_get_course", {
-                courseId: course.courseId || course.id,
-                orgId: course.orgId || course.orgId, 
-              });
-            }}
-          >
-            View Details
-          </button>
+    <div>
+      <h3>Course List</h3>
+      {courses.map((c, i) => (
+        <div key={i}>
+          <strong>{c.name}</strong><br />
+          ID: {c.courseId || c.id}
         </div>
       ))}
     </div>
   );
 }
 
-const root = document.getElementById("root");
-console.log("WIDGET METADATA:", window.openai?.toolResponseMetadata);
-if (root) createRoot(root).render(<CoursesWidget />);
-
-export default CoursesWidget;
+const root = createRoot(document.getElementById("root"));
+root.render(<CoursesWidget />);
