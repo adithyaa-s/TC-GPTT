@@ -24505,6 +24505,7 @@ function CoursesWidget() {
   ] });
 }
 var root = document.getElementById("root");
+console.log("WIDGET METADATA:", window.openai?.toolResponseMetadata);
 if (root)
   (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CoursesWidget, {}));
 var CoursesWidget_default = CoursesWidget;

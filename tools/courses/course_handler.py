@@ -219,57 +219,33 @@ def tc_list_courses(orgId: str, access_token: str, limit: int = None, si: int = 
     return tc.list_courses(orgId, access_token)
 
 
-def tc_list_courses_with_widget(orgId: str, access_token: str, limit: int = None, si: int = None) -> dict:
-    """
-    List courses WITH interactive ChatGPT widget UI.
-    
-    Returns data in the official MCP widget format:
-    - structuredContent: Concise summary the MODEL reads
-    - content: Optional narration for the model
-    - _meta: Rich data ONLY for widget (never sent to model)
-    """
-    
-    # Fetch courses from TrainerCentral API
+def tc_list_courses_with_widget(orgId: str, access_token: str, limit=None, si=None):
+
     courses_response = tc.list_courses(orgId, access_token)
-    
+
     courses = courses_response.get("courses", [])
     categories = courses_response.get("courseCategories", [])
     meta = courses_response.get("meta", {})
     total = meta.get("totalCourseCount", len(courses))
-    
-    # Count by status
+
     draft_count = sum(1 for c in courses if c.get("publishStatus") in ["DRAFT", "NONE"])
     published_count = sum(1 for c in courses if c.get("publishStatus") == "PUBLISHED")
-    
+
     return {
-        # STRUCTURED CONTENT: Concise data the MODEL reads
+        # 👇 MODEL SEES THIS
         "structuredContent": {
-            "summary": f"Found {total} courses ({published_count} published, {draft_count} draft)",
-            "courses": [
-                {
-                    "id": c.get("courseId"),
-                    "name": c.get("courseName"),
-                    "status": c.get("publishStatus"),
-                    "enrolled": c.get("enrolledCount", 0)
-                }
-                for c in courses[:]  # Only show first 5 to model
-            ]
+            "summary": f"You have {total} courses ({published_count} published, {draft_count} drafts)."
         },
-        
-        # CONTENT: Natural language narration for model
+
         "content": [
             {
                 "type": "text",
-                "text": f"You have {total} courses. Use the interactive widget below to browse, filter by status, sort, and manage your courses."
+                "text": f"Here are your courses (Org: {orgId}):"
             }
         ],
-        
-        # META: Full data ONLY for widget (model never sees this!)
+
+        # 👇 WIDGET SEES THIS (THIS WAS MISSING)
         "_meta": {
-            # Point to the widget template URI
-            "openai/outputTemplate": "ui://widget/courses.html",
-            
-            # Full courses data for the widget
             "courses": courses,
             "courseCategories": categories,
             "totalCourseCount": total,

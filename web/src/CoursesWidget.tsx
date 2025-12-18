@@ -1406,6 +1406,7 @@ function CoursesWidget() {
 }
 
 const root = document.getElementById("root");
+console.log("WIDGET METADATA:", window.openai?.toolResponseMetadata);
 if (root) createRoot(root).render(<CoursesWidget />);
 
 export default CoursesWidget;
