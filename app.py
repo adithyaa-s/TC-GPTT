@@ -769,14 +769,11 @@ from tools.courses.course_handler import (
     tc_get_course
 )
 
-app = FastAPI(title="TrainerCentral MCP Server with Logging")
-
-# ensure logs directory exists
-os.makedirs("logs", exist_ok=True)
-
-# Set up basic logger
+# Set up logger to stdout so Render captures it
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mcp")
+
+app = FastAPI(title="TrainerCentral MCP Server (with Logging)")
 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://tc-gptt.onrender.com")
 TC_API_BASE_URL = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
@@ -792,42 +789,34 @@ widget_metadata = {
     "openai/widgetDomain": MCP_SERVER_URL,
     "openai/widgetCSP": {
         "connect_domains": [MCP_SERVER_URL, TC_API_BASE_URL],
-        "resource_domains": ["https://*.oaistatic.com"]
-    }
+        "resource_domains": ["https://*.oaistatic.com"],
+    },
 }
-
-# helpers to log structured JSON
-def log_request(body):
-    with open("logs/mcp_requests.jsonl", "a") as f:
-        f.write(json.dumps(body) + "\n")
-
-def log_response(response):
-    with open("logs/mcp_responses.jsonl", "a") as f:
-        f.write(json.dumps(response) + "\n")
 
 @app.post("/")
 async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
     try:
         body = await request.json()
-    except:
-        return JSONResponse(status_code=400, content={"error": "invalid json"})
+    except Exception as e:
+        logger.error("Invalid JSON in request: %s", str(e))
+        return JSONResponse(status_code=400, content={"error":"invalid json"})
 
-    # Log the incoming request
-    log_request({"authorization": authorization, "body": body})
+    # Log incoming MCP request
+    logger.info("⬇️ MCP Request Authorization: %s", authorization)
+    logger.info(json.dumps(body, indent=2))
 
     method = body.get("method")
     params = body.get("params", {})
     req_id = body.get("id")
 
-    # default response
-    response_obj = {"jsonrpc": "2.0", "id": req_id}
+    response_obj = {"jsonrpc":"2.0", "id": req_id}
 
     try:
         if method == "initialize":
             response_obj["result"] = {
-                "protocolVersion": "2024-11-05",
-                "serverInfo": {"name": "trainercentral-fastmcp", "version": "1.0.0"},
-                "capabilities": {"tools": {}}
+                "protocolVersion":"2024-11-05",
+                "serverInfo":{"name":"trainercentral-fastmcp","version":"1.0.0"},
+                "capabilities":{"tools":{}}
             }
 
         elif method == "resources/list":
@@ -836,14 +825,14 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                     {
                         "uri": "ui://widget/courses.html",
                         "name": "Courses Widget",
-                        "description": "Simple list of courses",
+                        "description": "Simple courses list",
                         "mimeType": "text/html+skybridge",
                         "_meta": widget_metadata
                     },
                     {
                         "uri": "ui://widget/course-details.html",
                         "name": "Course Details Widget",
-                        "description": "Details view",
+                        "description": "Simple details view",
                         "mimeType": "text/html+skybridge",
                         "_meta": widget_metadata
                     }
@@ -852,22 +841,26 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
 
         elif method == "resources/read":
             uri = params.get("uri")
+            logger.info("📌 resources/read for URI: %s", uri)
+
             if uri == "ui://widget/courses.html":
                 js_path = os.path.join(os.path.dirname(__file__), "web/dist/courses-widget.js")
             elif uri == "ui://widget/course-details.html":
                 js_path = os.path.join(os.path.dirname(__file__), "web/dist/course-details.js")
             else:
                 response_obj["error"] = {"code": -32002, "message": "Resource not found"}
-                log_response(response_obj)
-                return response_obj
+                logger.error("Resource not found: %s", uri)
+                logger.info("⬆️ MCP Response:\n%s", json.dumps(response_obj,indent=2))
+                return JSONResponse(content=response_obj)
 
             try:
-                with open(js_path, "r") as f:
+                with open(js_path,"r") as f:
                     bundle = f.read()
             except FileNotFoundError:
-                response_obj["error"] = {"code": -32002, "message": "Widget bundle missing"}
-                log_response(response_obj)
-                return response_obj
+                response_obj["error"] = {"code": -32002, "message": "Widget build missing"}
+                logger.error("Widget bundle missing: %s", js_path)
+                logger.info("⬆️ MCP Response:\n%s", json.dumps(response_obj,indent=2))
+                return JSONResponse(content=response_obj)
 
             html = f"""
             <!DOCTYPE html>
@@ -877,35 +870,37 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
             </body></html>
             """
             response_obj["result"] = {
-                "contents": [
-                    {"uri": uri, "mimeType": "text/html+skybridge", "text": html, "_meta": widget_metadata}
-                ]
+                "contents":[{"uri":uri,"mimeType":"text/html+skybridge","text":html,"_meta":widget_metadata}]
             }
 
         elif method == "tools/list":
             tools = [
                 {
-                    "name": "tc_get_org_id",
-                    "description": "Get Org ID",
-                    "inputSchema": {"type": "object", "properties": {}, "required": []}
+                    "name":"tc_get_org_id",
+                    "description":"Get Org ID",
+                    "inputSchema":{"type":"object","properties":{},"required":[]}
                 },
                 {
-                    "name": "tc_list_courses_with_widget",
-                    "description": "List courses with widget",
-                    "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}}, "required": ["orgId"]},
-                    "_meta": {
-                        "openai/outputTemplate": "ui://widget/courses.html",
-                        "openai/widgetAccessible": True,
+                    "name":"tc_list_courses_with_widget",
+                    "description":"List courses (with widget)",
+                    "inputSchema":{"type":"object","properties":{"orgId":{"type":"string"}},"required":["orgId"]},
+                    "_meta":{
+                        "openai/outputTemplate":"ui://widget/courses.html",
+                        "openai/widgetAccessible":True,
                         **widget_metadata
                     }
                 },
                 {
-                    "name": "tc_get_course",
-                    "description": "Get course details",
-                    "inputSchema": {"type": "object", "properties": {"orgId": {"type": "string"}, "courseId": {"type": "string"}}, "required": ["orgId", "courseId"]},
-                    "_meta": {
-                        "openai/outputTemplate": "ui://widget/course-details.html",
-                        "openai/widgetAccessible": True,
+                    "name":"tc_get_course",
+                    "description":"Get course details",
+                    "inputSchema":{
+                        "type":"object",
+                        "properties":{"orgId":{"type":"string"},"courseId":{"type":"string"}},
+                        "required":["orgId","courseId"]
+                    },
+                    "_meta":{
+                        "openai/outputTemplate":"ui://widget/course-details.html",
+                        "openai/widgetAccessible":True,
                         **widget_metadata
                     }
                 }
@@ -913,46 +908,51 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
             response_obj["result"] = {"tools": tools}
 
         elif method == "tools/call":
-            # auth
             if not authorization or not authorization.startswith("Bearer "):
-                response_obj["result"] = {"content":[{"type":"text","text":"Auth missing"}], "isError": True}
+                response_obj["result"] = {"content":[{"type":"text","text":"Authentication missing"}], "isError":True}
             else:
                 access_token = authorization.split("Bearer ")[-1].strip()
-                name = params.get("name")
+                tool_name = params.get("name")
                 args = params.get("arguments", {})
                 args["access_token"] = access_token
+
+                logger.info("🔧 tools/call -> %s", tool_name)
+                logger.info("Args: %s", json.dumps(args, indent=2))
 
                 tool_registry = {
                     "tc_get_org_id": tc_get_org_id,
                     "tc_list_courses_with_widget": tc_list_courses_with_widget,
                     "tc_get_course": tc_get_course
                 }
-                func = tool_registry.get(name)
 
+                func = tool_registry.get(tool_name)
                 if not func:
-                    response_obj["error"] = {"code": -32601, "message": "Tool not found"}
+                    response_obj["error"] = {"code":-32601,"message":"Tool not found"}
                 else:
                     try:
                         result = func(**args)
-                        # if widget metadata exists
+                        logger.info("📊 Tool result for %s:\n%s", tool_name, json.dumps(result, indent=2))
+
                         if isinstance(result, dict) and "_meta" in result:
                             response_obj["result"] = {
                                 "content": result.get("content", []),
-                                "structuredContent": result.get("structuredContent", {}),
+                                "structuredContent": result.get("structuredContent", {})
                             }
                             response_obj["result"].update(result["_meta"])
                         else:
-                            response_obj["result"] = {"content": [{"type": "text", "text": json.dumps(result)}]}
+                            response_obj["result"] = {"content":[{"type":"text","text":json.dumps(result)}]}
                     except Exception as e:
-                        response_obj["result"] = {"content":[{"type":"text","text":str(e)}], "isError": True}
+                        response_obj["result"] = {"content":[{"type":"text","text":str(e)}], "isError":True}
+                        logger.error("Tool exception: %s", str(e))
 
         else:
-            response_obj["error"] = {"code": -32601, "message": "Method unsupported"}
+            response_obj["error"] = {"code": -32601, "message": "Unsupported method"}
 
-    except Exception as exc:
-        response_obj = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32000, "message": str(exc)}}
+    except Exception as e:
+        response_obj = {"jsonrpc":"2.0","id":req_id,"error":{"code":-32000,"message":str(e)}}
+        logger.error("Unexpected server error: %s", str(e))
 
-    # Log the MCP response
-    log_response(response_obj)
+    # Log full MCP response for visibility
+    logger.info("⬆️ MCP Response:\n%s", json.dumps(response_obj, indent=2))
 
     return JSONResponse(content=response_obj)
