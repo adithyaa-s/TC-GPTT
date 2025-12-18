@@ -182,7 +182,7 @@ def tc_list_courses_with_widget(orgId: str, access_token: str, limit: int = None
                     "status": c.get("publishStatus"),
                     "enrolled": c.get("enrolledCount", 0)
                 }
-                for c in courses[:5]  # Only show first 5 to model
+                for c in courses[:]  # Only show first 5 to model
             ]
         },
         
