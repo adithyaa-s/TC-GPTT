@@ -130,7 +130,7 @@ class TrainerCentralCourses:
         request_url = f"{self.base_url}/{orgId}/course/{courseId}/courseMembers.json?filter=2&limit={limit}"
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        logger.info(f"Getting course access requests: {response.status_code}")
+        logger.info(f"Requesting course access requests from: {request_url}")
         response = requests.get(request_url, headers=headers)
         logger.info(f"Getting course access status: {response.status_code}")
         
@@ -142,9 +142,10 @@ class TrainerCentralCourses:
         """
         request_url = f"{self.base_url}/{orgId}/updateCourseAttendee/{courseId}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
-        data={"courseMembers":[{"status":responseStatus}]}
-        logger.info(f"Accepting or Rejecting course access request: {response.status_code}")
-        response = requests.get(request_url, headers=headers, json=data)
-        logger.info(f"Accepting or Rejecting course access status: {response.status_code}")
-        
+        data = {"courseMembers": [{"status": responseStatus}]}
+
+        logger.info(f"Sending request to accept/reject course access to: {request_url}")
+        response = requests.post(request_url, headers=headers, json=data)  # Changed to POST
+        logger.info(f"Accept/Reject course access status: {response.status_code}")
+
         return response.json()
