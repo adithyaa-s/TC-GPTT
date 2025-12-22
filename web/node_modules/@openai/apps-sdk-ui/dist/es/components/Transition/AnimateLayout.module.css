@@ -1,0 +1,101 @@
+@layer components {.Layout {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  transition-property: height, width;
+
+  /* The container is considered to have three directional states by the latest action: */
+  /* - "in": (default) a new child entered with no other siblings present */
+}
+
+  .Layout[data-clip="true"] {
+    overflow: hidden;
+  }
+  /* - "move": a new child entered while another sibling was present */
+  .Layout[data-direction="in"] {
+    transition-delay: var(--tg-layout-enter-delay);
+    transition-duration: var(--tg-layout-enter-duration);
+    transition-timing-function: var(--tg-layout-enter-timing-function);
+  }
+  /* - "out": a child exited */
+
+  .Layout[data-direction="out"] {
+    transition-delay: var(--tg-layout-exit-delay);
+    transition-duration: var(--tg-layout-exit-duration);
+    transition-timing-function: var(--tg-layout-exit-timing-function);
+  }
+
+  /* "move" defaults to "in" values */
+  .Layout[data-direction="move"] {
+    transition-delay: var(--tg-layout-move-delay);
+    transition-duration: var(--tg-layout-move-duration);
+    transition-timing-function: var(--tg-layout-move-timing-function);
+  }
+
+  /* Interruptions should not experience delays */
+  .Layout[data-interrupted="true"] {
+    transition-delay: 0ms;
+  }.TransitionItem {
+  flex-shrink: 0;
+  will-change: var(--tg-will-change, auto);
+
+  /* Interruptions are allowed to experience delay, as opposed to <Animate> */
+  /* This is because they may involve interplay with a non-clipped container, which then creates */
+  /* unintended visual artifacts if the interruption is not delayed. */
+}
+
+  .TransitionItem[data-entering],
+  .TransitionItem[data-exiting] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+    .Layout[data-dimension="width"] > .TransitionItem[data-entering], .Layout[data-dimension="width"] > .TransitionItem[data-exiting] {
+      width: auto;
+    }
+
+    .Layout[data-item-anchor="end"] > .TransitionItem[data-entering], .Layout[data-item-anchor="end"] > .TransitionItem[data-exiting] {
+      top: initial;
+      bottom: 0;
+    }
+
+    .Layout[data-item-anchor="end"][data-dimension="width"] > .TransitionItem[data-entering], .Layout[data-item-anchor="end"][data-dimension="width"] > .TransitionItem[data-exiting] {
+      right: 0;
+      left: initial;
+    }
+
+  .TransitionItem[data-entering] {
+    filter: var(--tg-initial-filter);
+    opacity: var(--tg-initial-opacity);
+    transform: var(--tg-initial-transform);
+  }
+
+  .TransitionItem[data-exiting] {
+    filter: var(--tg-enter-filter);
+    opacity: var(--tg-enter-opacity);
+    transform: var(--tg-enter-transform);
+  }
+  .TransitionItem[data-entering-active],
+  .TransitionItem[data-entering][data-interrupted] {
+    filter: var(--tg-enter-filter);
+    opacity: var(--tg-enter-opacity);
+    transform: var(--tg-enter-transform);
+    transition:
+      opacity var(--tg-enter-duration) var(--tg-enter-timing-function) var(--tg-enter-delay),
+      transform var(--tg-enter-duration) var(--tg-enter-timing-function) var(--tg-enter-delay),
+      filter var(--tg-enter-duration) var(--tg-enter-timing-function) var(--tg-enter-delay);
+  }
+
+  .TransitionItem[data-exiting-active],
+  .TransitionItem[data-exiting][data-interrupted] {
+    filter: var(--tg-exit-filter);
+    opacity: var(--tg-exit-opacity);
+    transform: var(--tg-exit-transform);
+    transition:
+      opacity var(--tg-exit-duration) var(--tg-exit-timing-function) var(--tg-exit-delay),
+      transform var(--tg-exit-duration) var(--tg-exit-timing-function) var(--tg-exit-delay),
+      filter var(--tg-exit-duration) var(--tg-exit-timing-function) var(--tg-exit-delay);
+  }
+}

@@ -16,7 +16,9 @@ from tools.courses.course_handler import (
     tc_get_course,
     tc_list_courses,
     tc_update_course,
-    tc_delete_course
+    tc_delete_course,
+    tc_view_course_access_requests,
+    tc_accept_or_reject_course_view_access_request
 )
 from tools.chapters.chapter_handler import (
     tc_create_chapter,
@@ -70,6 +72,8 @@ TOOL_REGISTRY = {
     "tc_list_courses": tc_list_courses,
     "tc_update_course": tc_update_course,
     "tc_delete_course": tc_delete_course,
+    "tc_view_course_access_requests": tc_view_course_access_requests,
+    "tc_accept_or_reject_course_view_access_request": tc_accept_or_reject_course_view_access_request,
     "tc_create_chapter": tc_create_chapter,
     "tc_update_chapter": tc_update_chapter,
     "tc_delete_chapter": tc_delete_chapter,
@@ -247,6 +251,32 @@ async def mcp_handler(request: Request, authorization: Optional[str] = Header(No
                         "course_id": {"type": "string"}
                     },
                     "required": ["orgId", "course_id"]
+                }
+            },
+            {
+                "name": "tc_view_course_access_requests",
+                "description": "View pending access requests for a course. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "limit":{"type":"int"}
+                    },
+                    "required": ["orgId", "course_id"]
+                }
+            },
+            {
+                "name": "tc_accept_or_reject_course_view_access_request",
+                "description": "Accept or Reject a user's course view access request. Requires orgId.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "orgId": {"type": "string"},
+                        "course_id": {"type": "string"},
+                        "responseStatus":{"type":"int"}
+                    },
+                    "required": ["orgId", "course_id", "responseStatus"]
                 }
             },
             {

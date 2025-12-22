@@ -121,3 +121,30 @@ class TrainerCentralCourses:
         logger.info(f"Delete course status: {response.status_code}")
         
         return response.json()
+
+    
+    def view_course_access_requests(self, courseId: str, orgId: str, access_token: str, limit: int = 15):
+        """
+        Get view course requests for a TrainerCentral course.
+        """
+        request_url = f"{self.base_url}/{orgId}/course/{courseId}/courseMembers.json?filter=2&limit={limit}"
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        logger.info(f"Getting course access requests: {response.status_code}")
+        response = requests.get(request_url, headers=headers)
+        logger.info(f"Getting course access status: {response.status_code}")
+        
+        return response.json()
+
+    def accept_or_reject_course_view_access_request(self, courseId: str, orgId: str, access_token: str, responseStatus: int):
+        """
+        Accept or Reject a user's course view access request.
+        """
+        request_url = f"{self.base_url}/{orgId}/updateCourseAttendee/{courseId}.json"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        data={"courseMembers":[{"status":responseStatus}]}
+        logger.info(f"Accepting or Rejecting course access request: {response.status_code}")
+        response = requests.get(request_url, headers=headers, json=data)
+        logger.info(f"Accepting or Rejecting course access status: {response.status_code}")
+        
+        return response.json()
