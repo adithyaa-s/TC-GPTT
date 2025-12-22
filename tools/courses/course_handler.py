@@ -358,3 +358,48 @@ def tc_delete_course(courseId: str, orgId: str, access_token: str) -> dict:
         dict: API delete response.
     """
     return tc.delete_course(courseId, orgId, access_token)
+
+
+def tc_view_course_access_requests(courseId: str, orgId: str, access_token: str, limit: int = 15) -> dict:
+    """
+    Get the list of pending access requests for the respective course
+
+    Syntax:
+        tc_view_course_access_requests("19208000000061002")
+
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
+    This will call the TrainerCentral View Course Access Request API:
+        GET /api/v4/{orgId}/courses/{courseId}/courseMembers.json?filter=2&limit={limit}
+
+    Required OAuth scope:
+        TrainerCentral.courseapi.READ
+
+    Returns:
+        dict: API list of pending access requests.
+    """
+    return tc.view_course_access_requests(courseId, orgId, access_token, limit)
+
+def tc_accept_or_reject_course_view_access_request(courseId: str, orgId: str, access_token:str, responseStatus: int) -> dict:
+    """
+    Accept or Reject a user's course view access request.
+
+    Syntax:
+        tc_accept_or_reject_course_view_access_request("19208000000061002")
+        responseStatus (accept or reject the request)
+            2 - accept
+            3 - reject
+
+    Note: Provide orgId and access token of the user, after OAuth, as parameters.  
+
+    This will call the TrainerCentral View Course Access Request API:
+        POST /api/v4/{orgId}/updateCourseAttendee/{courseId}.json
+
+    Required OAuth scope:
+        TrainerCentral.courseapi.UPDATE
+
+    Returns:
+        dict: Updated course object.
+   
+    """
+    return tc.accept_or_reject_course_view_access_request(courseId, orgId, access_token, responseStatus)

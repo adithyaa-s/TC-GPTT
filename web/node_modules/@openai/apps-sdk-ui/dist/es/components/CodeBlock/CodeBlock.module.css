@@ -1,0 +1,91 @@
+@layer components {.CodeBlock {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--codeblock-background-color);
+}.CopyButtonContainer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 10px 10px 0 0;
+  border-radius: inherit;
+  background-color: var(--codeblock-background-color);
+}.SyntaxHighlighter {
+  --syntax1: var(--codeblock-syntax-1);
+  --syntax2: var(--codeblock-syntax-2);
+  --syntax3: var(--codeblock-syntax-3);
+  --syntax4: var(--codeblock-syntax-4);
+  --syntax5: var(--codeblock-syntax-5);
+
+  overflow: auto;
+  display: block;
+  /* Padding inside the overflow: auto container */
+  padding: 14px 40px 14px 16px;
+  margin: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.875em; /* 14px to a 16px baseline */
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5em;
+}
+
+  /* stylelint-disable selector-class-pattern */
+  .SyntaxHighlighter :global {
+
+    /* Order matters here, for nested tokens */
+  }
+    .SyntaxHighlighter :global .token.property,
+    .SyntaxHighlighter :global .token.variable,
+    .SyntaxHighlighter :global .token.attr-name,
+    .SyntaxHighlighter :global .token.unit,
+    .SyntaxHighlighter :global .token.id,
+    .SyntaxHighlighter :global .token.selector,
+    .SyntaxHighlighter :global .token.entity,
+    .SyntaxHighlighter :global .token.tag,
+    .SyntaxHighlighter :global .token.type {
+      color: var(--syntax4);
+    }
+
+    .SyntaxHighlighter :global .token.url,
+    .SyntaxHighlighter :global .token.boolean,
+    .SyntaxHighlighter :global .token.number,
+    .SyntaxHighlighter :global .token.important {
+      color: var(--syntax5);
+    }
+
+    .SyntaxHighlighter :global .token.builtin,
+    .SyntaxHighlighter :global .token.function,
+    .SyntaxHighlighter :global .token.class-name {
+      color: var(--syntax1);
+    }
+    .SyntaxHighlighter :global .token.keyword,
+    .SyntaxHighlighter :global .token.constant,
+    .SyntaxHighlighter :global .token.symbol,
+    .SyntaxHighlighter :global .token.deleted {
+      color: var(--syntax2);
+    }
+
+    .SyntaxHighlighter :global .token.string,
+    .SyntaxHighlighter :global .token.char,
+    .SyntaxHighlighter :global .token.regex,
+    .SyntaxHighlighter :global .token.attr-value,
+    .SyntaxHighlighter :global .token.inserted {
+      color: var(--syntax3);
+    }
+
+    .SyntaxHighlighter :global .token.comment,
+    .SyntaxHighlighter :global .token.prolog,
+    .SyntaxHighlighter :global .token.doctype,
+    .SyntaxHighlighter :global .token.cdata {
+      color: color-mix(in oklab, var(--color-text) 50%, transparent);
+    }
+
+    .SyntaxHighlighter :global .token.punctuation,
+    .SyntaxHighlighter :global .token.operator {
+      color: color-mix(in oklab, var(--color-text) 60%, transparent);
+    }
+
+    .SyntaxHighlighter :global .token.console {
+      color: var(--color-text);
+    }
+}

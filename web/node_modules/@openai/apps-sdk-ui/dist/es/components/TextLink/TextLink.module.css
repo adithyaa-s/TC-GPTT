@@ -1,0 +1,50 @@
+@layer components {.TextLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--link-gap);
+  /* Used to round the focus ring */
+  border-radius: var(--link-radius);
+  color: currentcolor;
+  cursor: pointer;
+  font-weight: var(--link-font-weight);
+  overflow-wrap: anywhere;
+  transition-duration: var(--transition-duration-basic);
+  transition-property: opacity, color, box-shadow, text-decoration-color;
+  transition-timing-function: var(--transition-ease-basic);
+}
+
+  @media (hover: hover) and (pointer: fine) {.TextLink:hover {
+    color: color-mix(in oklab, currentcolor 80%, transparent);
+}
+
+    /* stylelint-disable-next-line */
+    :global(.text-secondary) .TextLink:hover {
+      color: var(--color-text);
+    }
+
+    /* stylelint-disable-next-line */
+    :global(.text-tertiary) .TextLink:hover {
+      color: var(--color-text-secondary);
+    }
+}
+
+  .TextLink:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 1px;
+  }
+
+  .TextLink[data-underline] {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, currentcolor 70%, transparent);
+    text-underline-offset: var(--link-underline-decoration-offset);
+  }
+
+  .TextLink[data-primary] {
+    color: var(--link-primary-text-color);
+  }
+
+    @media (hover: hover) and (pointer: fine) {.TextLink[data-primary]:hover {
+      color: var(--link-primary-text-color-hover);
+}
+}
+}

@@ -1,0 +1,233 @@
+@layer components {.MarkdownContent {
+  overflow-wrap: anywhere;
+}
+  /* IMPORTANT: These cannot be removed without changing SmoothMarkdown   */
+  .MarkdownContent *:first-child {
+    margin-top: 0;
+  }
+  /* ******************************************************************** */
+
+  .MarkdownContent *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Headers */
+  .MarkdownContent h1 {
+    margin-bottom: 0.5rem;
+    font-size: 1.75em;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.04rem;
+    line-height: 1.222;
+  }
+  /* ******************************************************************** */
+
+  .MarkdownContent h2 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.5em;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.222;
+  }
+
+  /* Avoid margin collapse on all children, for more predictable spacing. */
+
+  .MarkdownContent h3 {
+    margin-top: 1.125rem;
+    margin-bottom: 0.625rem;
+    font-size: 1.25em;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.3;
+  }
+
+  .MarkdownContent h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 1em;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.5;
+  }
+
+  .MarkdownContent h5 {
+    font-size: 1em;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.5;
+  }
+
+  .MarkdownContent h6 {
+    font-size: 1em;
+    line-height: 1.5;
+  }
+
+  /* Lists */
+  .MarkdownContent ul,
+  .MarkdownContent ol {
+    margin: 0.5em 0 1em;
+  }
+
+    .MarkdownContent ul > li > :first-child, .MarkdownContent ol > li > :first-child {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .MarkdownContent ul > li ul,
+    .MarkdownContent ul > li ol,
+    .MarkdownContent ol > li ul,
+    .MarkdownContent ol > li ol {
+      margin-top: 0.25em !important;
+    }
+
+  .MarkdownContent ul {
+    padding-left: 1.625em;
+    list-style-type: disc;
+  }
+
+    .MarkdownContent ul > li {
+      padding-left: 0.375em;
+      margin: 0.5em 0;
+    }
+
+      .MarkdownContent ul > li::marker {
+        color: var(--color-text-secondary);
+        font-size: 1em;
+        font-weight: var(--font-weight-medium);
+      }
+
+  .MarkdownContent ol {
+    padding-left: 1.625em;
+    list-style-type: decimal;
+  }
+
+    .MarkdownContent ol > li {
+      padding-left: 0.375em;
+      margin: 0.5em 0;
+    }
+
+      .MarkdownContent ol > li::marker {
+        color: var(--color-text-secondary);
+        font-size: 1em;
+        font-weight: var(--font-weight-medium);
+      }
+
+  .MarkdownContent li {
+    min-height: 1.5em;
+    margin: 0.5em 0;
+  }
+
+  /* Text */
+  .MarkdownContent p {
+    margin: 1em 0;
+  }
+
+  /* Emphasis */
+  .MarkdownContent strong {
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .MarkdownContent em {
+    font-style: italic;
+  }
+
+  /* Quotes */
+  .MarkdownContent blockquote {
+    position: relative;
+    padding-top: 0.25em;
+    padding-bottom: 0.25rem;
+    padding-left: calc(var(--spacing) * 6);
+    color: var(--tw-prose-quotes);
+    font-weight: var(--font-weight-normal);
+    quotes: "\201C" "\201D" "\2018" "\2019";
+  }
+
+    .MarkdownContent blockquote::before {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      display: block;
+      width: 0.25rem;
+      border-radius: var(--radius-2xs);
+      content: "";
+    }
+
+    .MarkdownContent blockquote::before, :where([data-theme="light"]) .MarkdownContent blockquote::before {
+background: var(--alpha-15);
+}
+
+    :where([data-theme="dark"]) .MarkdownContent blockquote::before {
+background: var(--alpha-20);
+}
+
+    .MarkdownContent blockquote p {
+      margin: 0.5em 0 0;
+    }
+
+      .MarkdownContent blockquote p:first-child {
+        margin-top: 0;
+      }
+
+  /* Dividers */
+  .MarkdownContent hr {
+    border-color: var(--alpha-10);
+    border-top-width: 1px;
+    margin-top: 2em;
+    margin-bottom: 2em;
+  }
+
+  /* Tables */
+  .MarkdownContent table {
+    width: 100%;
+    border: 0;
+    margin-top: 2em;
+    margin-bottom: 2em;
+    border-collapse: separate;
+    font-size: 0.875em;
+    line-height: 1.7142857;
+    table-layout: auto;
+  }
+
+  .MarkdownContent th {
+    border: 0;
+    border-bottom: 1px solid var(--color-border-strong);
+    line-height: var(--font-text-sm-line-height);
+    padding-block: calc(var(--spacing) * 2);
+    padding-inline: calc(var(--spacing) * 2);
+    text-align: start;
+  }
+
+    .MarkdownContent th:first-child {
+      padding-inline-start: 0;
+    }
+
+    .MarkdownContent th:last-child {
+      padding-inline-end: 0;
+    }
+
+  .MarkdownContent td {
+    border: 0;
+    border-bottom: 1px solid var(--color-border);
+    padding-block: calc(var(--spacing) * 2.5);
+    padding-inline: calc(var(--spacing) * 2);
+  }
+
+    .MarkdownContent td:first-child {
+      padding-inline-start: 0;
+    }
+
+    .MarkdownContent td:last-child {
+      padding-inline-end: 0;
+    }
+    .MarkdownContent tbody tr:last-child td {
+      border-bottom: 0;
+    }.InlineCode {
+  padding: 1px 0.3rem;
+  border-radius: 0.25rem;
+  box-shadow: inset 0 0 0 1px var(--alpha-08);
+  color: inherit;
+  font-size: 0.875em;
+  font-weight: 500;
+}.InlineCode, :where([data-theme="light"]) .InlineCode {
+background-color: var(--alpha-04);
+}:where([data-theme="dark"]) .InlineCode {
+background-color: var(--alpha-10);
+}
+}
