@@ -145,7 +145,7 @@ class TrainerCentralCourses:
         data = {"courseMembers": [{"status": responseStatus}]}
 
         logger.info(f"Sending request to accept/reject course access to: {request_url}")
-        response = requests.post(request_url, headers=headers, json=data)  # Changed to POST
+        response = requests.put(request_url, headers=headers, json=data)  
         logger.info(f"Accept/Reject course access status: {response.status_code}")
 
         return response.json()
