@@ -800,7 +800,7 @@ from tools.course_live_workshops.course_live_workshop_handler import (
     # tc_get_course
 )
 
-# Set up logger to stdout so Render captures it
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mcp")
 
@@ -899,7 +899,7 @@ from tools.course_live_workshops.course_live_workshop_handler import (
     invite_learner_to_course_or_course_live_session
 )
 
-# Set up logger to stdout so Render captures it
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mcp")
 
@@ -1002,9 +1002,9 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"}
+                            "courseId": {"type": "string"}
                         },
-                        "required": ["orgId", "course_id"]
+                        "required": ["orgId", "courseId"]
                     }
                 },
                 {
@@ -1027,10 +1027,10 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "updates": {"type": "object"}
                         },
-                        "required": ["orgId", "course_id", "updates"]
+                        "required": ["orgId", "courseId", "updates"]
                     }
                 },
                 {
@@ -1040,9 +1040,9 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"}
+                            "courseId": {"type": "string"}
                         },
-                        "required": ["orgId", "course_id"]
+                        "required": ["orgId", "courseId"]
                     }
                 },
                 {
@@ -1052,10 +1052,10 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "limit":{"type":"integer"}
                         },
-                        "required": ["orgId", "course_id"]
+                        "required": ["orgId", "courseId"]
                     }
                 },
                 {
@@ -1065,10 +1065,10 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "responseStatus":{"type":"integer"}
                         },
-                        "required": ["orgId", "course_id", "responseStatus"]
+                        "required": ["orgId", "courseId", "responseStatus"]
                     }
                 },
                 {
@@ -1090,11 +1090,11 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "section_id": {"type": "string"},
                             "updates": {"type": "object"}
                         },
-                        "required": ["orgId", "course_id", "section_id", "updates"]
+                        "required": ["orgId", "courseId", "section_id", "updates"]
                     }
                 },
                 {
@@ -1104,10 +1104,10 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "section_id": {"type": "string"}
                         },
-                        "required": ["orgId", "course_id", "section_id"]
+                        "required": ["orgId", "courseId", "section_id"]
                     }
                 },
                 {
@@ -1235,13 +1235,13 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "name": {"type": "string"},
                             "description_html": {"type": "string"},
                             "start_time": {"type": "string"},
                             "end_time": {"type": "string"}
                         },
-                        "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
+                        "required": ["orgId", "courseId", "name", "description_html", "start_time", "end_time"]
                     }
                 },
                 {
@@ -1280,7 +1280,7 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                             "email": {"type": "string"},
                             "first_name": {"type": "string"},
                             "last_name": {"type": "string"},
-                            "course_id": {"type": "string"},
+                            "courseId": {"type": "string"},
                             "session_id": {"type": "string"}
                         },
                         "required": ["orgId", "email", "first_name", "last_name"]
@@ -1382,7 +1382,7 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
         response_obj = {"jsonrpc":"2.0","id":req_id,"error":{"code":-32000,"message":str(e)}}
         logger.error("Unexpected server error: %s", str(e))
 
-    # Log full MCP response for visibility
+
     logger.info("⬆️ MCP Response:\n%s", json.dumps(response_obj, indent=2))
 
     return JSONResponse(content=response_obj)
