@@ -796,8 +796,8 @@ from tools.course_live_workshops.course_live_workshop_handler import (
     tc_list_course_live_sessions,
     tc_delete_course_live_session,
     invite_learner_to_course_or_course_live_session
-    tc_list_courses_with_widget,
-    tc_get_course
+    # tc_list_courses_with_widget,
+    # tc_get_course
 )
 
 # Set up logger to stdout so Render captures it
@@ -815,6 +815,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+widget_metadata = {
+    "openai/widgetDomain": MCP_SERVER_URL,
+    "openai/widgetCSP": {
+        "connect_domains": [MCP_SERVER_URL, TC_API_BASE_URL],
+        "resource_domains": ["https://*.oaistatic.com"],
+    },
+}
 
 TOOL_REGISTRY = {
     "tc_get_org_id": tc_get_org_id,
@@ -841,12 +848,106 @@ TOOL_REGISTRY = {
     "tc_list_course_live_sessions": tc_list_course_live_sessions,
     "tc_delete_course_live_session": tc_delete_course_live_session,
     "invite_learner_to_course_or_course_live_session": invite_learner_to_course_or_course_live_session,
+# widget_metadata : {
+#     "openai/widgetDomain": MCP_SERVER_URL,
+#     "openai/widgetCSP": {
+#         "connect_domains": [MCP_SERVER_URL, TC_API_BASE_URL],
+#         "resource_domains": ["https://*.oaistatic.com"],
+#     },
+}
+# }
+
+import os
+import json
+import logging
+from fastapi import FastAPI, Request, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from tools.portals.portal_handler import tc_get_org_id
+from tools.courses.course_handler import (
+    tc_create_course,
+    tc_get_course,
+    tc_list_courses,
+    tc_update_course,
+    tc_delete_course,
+    tc_view_course_access_requests,
+    tc_accept_or_reject_course_view_access_request
+)
+from tools.chapters.chapter_handler import (
+    tc_create_chapter,
+    tc_update_chapter,
+    tc_delete_chapter
+)
+from tools.lessons.lesson_handler import (
+    tc_create_lesson,
+    tc_update_lesson,
+    tc_delete_lesson
+)
+from tools.live_workshops.live_workshop_handler import (
+    tc_create_workshop,
+    tc_update_workshop,
+    tc_create_workshop_occurrence,
+    tc_update_workshop_occurrence,
+    tc_list_all_global_workshops,
+    tc_invite_user_to_session
+)
+from tools.course_live_workshops.course_live_workshop_handler import (
+    tc_create_course_live_session,
+    tc_list_course_live_sessions,
+    tc_delete_course_live_session,
+    invite_learner_to_course_or_course_live_session
+)
+
+# Set up logger to stdout so Render captures it
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("mcp")
+
+app = FastAPI(title="TrainerCentral MCP Server (with Logging)")
+
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://tc-gptt.onrender.com")
+TC_API_BASE_URL = os.getenv("TC_API_BASE_URL", "https://myacademy.trainercentral.in")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 widget_metadata = {
     "openai/widgetDomain": MCP_SERVER_URL,
     "openai/widgetCSP": {
         "connect_domains": [MCP_SERVER_URL, TC_API_BASE_URL],
         "resource_domains": ["https://*.oaistatic.com"],
     },
+}
+
+TOOL_REGISTRY = {
+    "tc_get_org_id": tc_get_org_id,
+    "tc_create_course": tc_create_course,
+    "tc_get_course": tc_get_course,
+    "tc_list_courses": tc_list_courses,
+    "tc_update_course": tc_update_course,
+    "tc_delete_course": tc_delete_course,
+    "tc_view_course_access_requests": tc_view_course_access_requests,
+    "tc_accept_or_reject_course_view_access_request": tc_accept_or_reject_course_view_access_request,
+    "tc_create_chapter": tc_create_chapter,
+    "tc_update_chapter": tc_update_chapter,
+    "tc_delete_chapter": tc_delete_chapter,
+    "tc_create_lesson": tc_create_lesson,
+    "tc_update_lesson": tc_update_lesson,
+    "tc_delete_lesson": tc_delete_lesson,
+    "tc_create_workshop": tc_create_workshop,
+    "tc_update_workshop": tc_update_workshop,
+    "tc_create_workshop_occurrence": tc_create_workshop_occurrence,
+    "tc_update_workshop_occurrence": tc_update_workshop_occurrence,
+    "tc_list_all_global_workshops": tc_list_all_global_workshops,
+    "tc_invite_user_to_session": tc_invite_user_to_session,
+    "tc_create_course_live_session": tc_create_course_live_session,
+    "tc_list_course_live_sessions": tc_list_course_live_sessions,
+    "tc_delete_course_live_session": tc_delete_course_live_session,
+    "invite_learner_to_course_or_course_live_session": invite_learner_to_course_or_course_live_session,
 }
 
 @app.post("/")
@@ -874,314 +975,319 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                 "serverInfo":{"name":"trainercentral-fastmcp","version":"1.0.0"},
                 "capabilities":{"tools":{}}
             }
-        }
-    
-    elif method == "tools/list":
-        tools_list = [
-            {
-                "name": "tc_get_org_id",
-                "description": "Get organizations. Call FIRST in every conversation.",
-                "inputSchema": {"type": "object", "properties": {}, "required": []}
-            },
-            {
-                "name": "tc_create_course",
-                "description": "Create course. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_data": {"type": "object"}
-                    },
-                    "required": ["orgId", "course_data"]
+
+        elif method == "tools/list":
+            tools_list = [
+                {
+                    "name": "tc_get_org_id",
+                    "description": "Get organizations. Call FIRST in every conversation.",
+                    "inputSchema": {"type": "object", "properties": {}, "required": []}
+                },
+                {
+                    "name": "tc_create_course",
+                    "description": "Create course. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_data": {"type": "object"}
+                        },
+                        "required": ["orgId", "course_data"]
+                    }
+                },
+                {
+                    "name": "tc_get_course",
+                    "description": "Get course. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"}
+                        },
+                        "required": ["orgId", "course_id"]
+                    }
+                },
+                {
+                    "name": "tc_list_courses",
+                    "description": "List courses. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "limit": {"type": "integer"},
+                            "si": {"type": "integer"}
+                        },
+                        "required": ["orgId"]
+                    }
+                },
+                {
+                    "name": "tc_update_course",
+                    "description": "Update course. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "updates": {"type": "object"}
+                        },
+                        "required": ["orgId", "course_id", "updates"]
+                    }
+                },
+                {
+                    "name": "tc_delete_course",
+                    "description": "Delete course. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"}
+                        },
+                        "required": ["orgId", "course_id"]
+                    }
+                },
+                {
+                    "name": "tc_view_course_access_requests",
+                    "description": "View pending access requests for a course. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "limit":{"type":"integer"}
+                        },
+                        "required": ["orgId", "course_id"]
+                    }
+                },
+                {
+                    "name": "tc_accept_or_reject_course_view_access_request",
+                    "description": "Accept or Reject a user's course view access request. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "responseStatus":{"type":"integer"}
+                        },
+                        "required": ["orgId", "course_id", "responseStatus"]
+                    }
+                },
+                {
+                    "name": "tc_create_chapter",
+                    "description": "Create chapter. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "section_data": {"type": "object"}
+                        },
+                        "required": ["orgId", "section_data"]
+                    }
+                },
+                {
+                    "name": "tc_update_chapter",
+                    "description": "Update chapter. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "section_id": {"type": "string"},
+                            "updates": {"type": "object"}
+                        },
+                        "required": ["orgId", "course_id", "section_id", "updates"]
+                    }
+                },
+                {
+                    "name": "tc_delete_chapter",
+                    "description": "Delete chapter. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "section_id": {"type": "string"}
+                        },
+                        "required": ["orgId", "course_id", "section_id"]
+                    }
+                },
+                {
+                    "name": "tc_create_lesson",
+                    "description": "Create lesson. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_data": {"type": "object"},
+                            "content_html": {"type": "string"},
+                            "content_filename": {"type": "string"}
+                        },
+                        "required": ["orgId", "session_data", "content_html"]
+                    }
+                },
+                {
+                    "name": "tc_update_lesson",
+                    "description": "Update lesson. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_id": {"type": "string"},
+                            "updates": {"type": "object"}
+                        },
+                        "required": ["orgId", "session_id", "updates"]
+                    }
+                },
+                {
+                    "name": "tc_delete_lesson",
+                    "description": "Delete lesson. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_id": {"type": "string"}
+                        },
+                        "required": ["orgId", "session_id"]
+                    }
+                },
+                {
+                    "name": "tc_create_workshop",
+                    "description": "Create workshop. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_data": {"type": "object"}
+                        },
+                        "required": ["orgId", "session_data"]
+                    }
+                },
+                {
+                    "name": "tc_update_workshop",
+                    "description": "Update workshop. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_id": {"type": "string"},
+                            "updates": {"type": "object"}
+                        },
+                        "required": ["orgId", "session_id", "updates"]
+                    }
+                },
+                {
+                    "name": "tc_create_workshop_occurrence",
+                    "description": "Create workshop occurrence. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "talk_data": {"type": "object"}
+                        },
+                        "required": ["orgId", "talk_data"]
+                    }
+                },
+                {
+                    "name": "tc_update_workshop_occurrence",
+                    "description": "Update workshop occurrence. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "talk_id": {"type": "string"},
+                            "updates": {"type": "object"}
+                        },
+                        "required": ["orgId", "talk_id", "updates"]
+                    }
+                },
+                {
+                    "name": "tc_list_all_global_workshops",
+                    "description": "List workshops. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "filter_type": {"type": "integer"},
+                            "limit": {"type": "integer"},
+                            "si": {"type": "integer"}
+                        },
+                        "required": ["orgId"]
+                    }
+                },
+                {
+                    "name": "tc_invite_user_to_session",
+                    "description": "Invite user. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_id": {"type": "string"},
+                            "email": {"type": "string"},
+                            "role": {"type": "integer"},
+                            "source": {"type": "integer"}
+                        },
+                        "required": ["orgId", "session_id", "email"]
+                    }
+                },
+                {
+                    "name": "tc_create_course_live_session",
+                    "description": "Create course live session. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "description_html": {"type": "string"},
+                            "start_time": {"type": "string"},
+                            "end_time": {"type": "string"}
+                        },
+                        "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
+                    }
+                },
+                {
+                    "name": "tc_list_course_live_sessions",
+                    "description": "List course live sessions. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "filter_type": {"type": "integer"},
+                            "limit": {"type": "integer"},
+                            "si": {"type": "integer"}
+                        },
+                        "required": ["orgId"]
+                    }
+                },
+                {
+                    "name": "tc_delete_course_live_session",
+                    "description": "Delete course live session. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "session_id": {"type": "string"}
+                        },
+                        "required": ["orgId", "session_id"]
+                    }
+                },
+                {
+                    "name": "invite_learner_to_course_or_course_live_session",
+                    "description": "Invite learner. Requires orgId.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "orgId": {"type": "string"},
+                            "email": {"type": "string"},
+                            "first_name": {"type": "string"},
+                            "last_name": {"type": "string"},
+                            "course_id": {"type": "string"},
+                            "session_id": {"type": "string"}
+                        },
+                        "required": ["orgId", "email", "first_name", "last_name"]
+                    }
                 }
-            },
-            {
-                "name": "tc_get_course",
-                "description": "Get course. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"}
-                    },
-                    "required": ["orgId", "course_id"]
-                }
-            },
-            {
-                "name": "tc_list_courses",
-                "description": "List courses. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "limit": {"type": "integer"},
-                        "si": {"type": "integer"}
-                    },
-                    "required": ["orgId"]
-                }
-            },
-            {
-                "name": "tc_update_course",
-                "description": "Update course. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "updates": {"type": "object"}
-                    },
-                    "required": ["orgId", "course_id", "updates"]
-                }
-            },
-            {
-                "name": "tc_delete_course",
-                "description": "Delete course. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"}
-                    },
-                    "required": ["orgId", "course_id"]
-                }
-            },
-            {
-                "name": "tc_view_course_access_requests",
-                "description": "View pending access requests for a course. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "limit":{"type":"int"}
-                    },
-                    "required": ["orgId", "course_id"]
-                }
-            },
-            {
-                "name": "tc_accept_or_reject_course_view_access_request",
-                "description": "Accept or Reject a user's course view access request. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "responseStatus":{"type":"int"}
-                    },
-                    "required": ["orgId", "course_id", "responseStatus"]
-                }
-            },
-            {
-                "name": "tc_create_chapter",
-                "description": "Create chapter. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "section_data": {"type": "object"}
-                    },
-                    "required": ["orgId", "section_data"]
-                }
-            },
-            {
-                "name": "tc_update_chapter",
-                "description": "Update chapter. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "section_id": {"type": "string"},
-                        "updates": {"type": "object"}
-                    },
-                    "required": ["orgId", "course_id", "section_id", "updates"]
-                }
-            },
-            {
-                "name": "tc_delete_chapter",
-                "description": "Delete chapter. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "section_id": {"type": "string"}
-                    },
-                    "required": ["orgId", "course_id", "section_id"]
-                }
-            },
-            {
-                "name": "tc_create_lesson",
-                "description": "Create lesson. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_data": {"type": "object"},
-                        "content_html": {"type": "string"},
-                        "content_filename": {"type": "string"}
-                    },
-                    "required": ["orgId", "session_data", "content_html"]
-                }
-            },
-            {
-                "name": "tc_update_lesson",
-                "description": "Update lesson. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_id": {"type": "string"},
-                        "updates": {"type": "object"}
-                    },
-                    "required": ["orgId", "session_id", "updates"]
-                }
-            },
-            {
-                "name": "tc_delete_lesson",
-                "description": "Delete lesson. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_id": {"type": "string"}
-                    },
-                    "required": ["orgId", "session_id"]
-                }
-            },
-            {
-                "name": "tc_create_workshop",
-                "description": "Create workshop. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_data": {"type": "object"}
-                    },
-                    "required": ["orgId", "session_data"]
-                }
-            },
-            {
-                "name": "tc_update_workshop",
-                "description": "Update workshop. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_id": {"type": "string"},
-                        "updates": {"type": "object"}
-                    },
-                    "required": ["orgId", "session_id", "updates"]
-                }
-            },
-            {
-                "name": "tc_create_workshop_occurrence",
-                "description": "Create workshop occurrence. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "talk_data": {"type": "object"}
-                    },
-                    "required": ["orgId", "talk_data"]
-                }
-            },
-            {
-                "name": "tc_update_workshop_occurrence",
-                "description": "Update workshop occurrence. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "talk_id": {"type": "string"},
-                        "updates": {"type": "object"}
-                    },
-                    "required": ["orgId", "talk_id", "updates"]
-                }
-            },
-            {
-                "name": "tc_list_all_global_workshops",
-                "description": "List workshops. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "filter_type": {"type": "integer"},
-                        "limit": {"type": "integer"},
-                        "si": {"type": "integer"}
-                    },
-                    "required": ["orgId"]
-                }
-            },
-            {
-                "name": "tc_invite_user_to_session",
-                "description": "Invite user. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_id": {"type": "string"},
-                        "email": {"type": "string"},
-                        "role": {"type": "integer"},
-                        "source": {"type": "integer"}
-                    },
-                    "required": ["orgId", "session_id", "email"]
-                }
-            },
-            {
-                "name": "tc_create_course_live_session",
-                "description": "Create course live session. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "name": {"type": "string"},
-                        "description_html": {"type": "string"},
-                        "start_time": {"type": "string"},
-                        "end_time": {"type": "string"}
-                    },
-                    "required": ["orgId", "course_id", "name", "description_html", "start_time", "end_time"]
-                }
-            },
-            {
-                "name": "tc_list_course_live_sessions",
-                "description": "List course live sessions. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "filter_type": {"type": "integer"},
-                        "limit": {"type": "integer"},
-                        "si": {"type": "integer"}
-                    },
-                    "required": ["orgId"]
-                }
-            },
-            {
-                "name": "tc_delete_course_live_session",
-                "description": "Delete course live session. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "session_id": {"type": "string"}
-                    },
-                    "required": ["orgId", "session_id"]
-                }
-            },
-            {
-                "name": "invite_learner_to_course_or_course_live_session",
-                "description": "Invite learner. Requires orgId.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "orgId": {"type": "string"},
-                        "email": {"type": "string"},
-                        "first_name": {"type": "string"},
-                        "last_name": {"type": "string"},
-                        "course_id": {"type": "string"},
-                        "session_id": {"type": "string"}
+            ]
+            response_obj["result"] = {"tools": tools_list}
 
         elif method == "resources/list":
             response_obj["result"] = {
@@ -1237,40 +1343,6 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                 "contents":[{"uri":uri,"mimeType":"text/html+skybridge","text":html,"_meta":widget_metadata}]
             }
 
-        elif method == "tools/list":
-            tools = [
-                {
-                    "name":"tc_get_org_id",
-                    "description":"Get Org ID",
-                    "inputSchema":{"type":"object","properties":{},"required":[]}
-                },
-                {
-                    "name":"tc_list_courses_with_widget",
-                    "description":"List courses (with widget)",
-                    "inputSchema":{"type":"object","properties":{"orgId":{"type":"string"}},"required":["orgId"]},
-                    "_meta":{
-                        "openai/outputTemplate":"ui://widget/courses.html",
-                        "openai/widgetAccessible":True,
-                        **widget_metadata
-                    }
-                },
-                {
-                    "name":"tc_get_course",
-                    "description":"Get course details",
-                    "inputSchema":{
-                        "type":"object",
-                        "properties":{"orgId":{"type":"string"},"courseId":{"type":"string"}},
-                        "required":["orgId","courseId"]
-                    },
-                    "_meta":{
-                        "openai/outputTemplate":"ui://widget/course-details.html",
-                        "openai/widgetAccessible":True,
-                        **widget_metadata
-                    }
-                }
-            ]
-            response_obj["result"] = {"tools": tools}
-
         elif method == "tools/call":
             if not authorization or not authorization.startswith("Bearer "):
                 response_obj["result"] = {"content":[{"type":"text","text":"Authentication missing"}], "isError":True}
@@ -1283,13 +1355,7 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                 logger.info("🔧 tools/call -> %s", tool_name)
                 logger.info("Args: %s", json.dumps(args, indent=2))
 
-                tool_registry = {
-                    "tc_get_org_id": tc_get_org_id,
-                    "tc_list_courses_with_widget": tc_list_courses_with_widget,
-                    "tc_get_course": tc_get_course
-                }
-
-                func = tool_registry.get(tool_name)
+                func = TOOL_REGISTRY.get(tool_name)
                 if not func:
                     response_obj["error"] = {"code":-32601,"message":"Tool not found"}
                 else:
