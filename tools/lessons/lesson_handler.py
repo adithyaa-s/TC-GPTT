@@ -55,6 +55,70 @@ def tc_create_lesson(
     """
     return tc_lessons.create_lesson_with_content(session_data, content_html, orgId, access_token, content_filename)
 
+def tc_get_course_lessons(courseId: str, orgId: str, access_token: str) -> dict:
+    """
+    Get all lessons (sessions) for a specific course.
+    
+    This is useful for:
+    - Listing all lessons in a course before creating tests
+    - Understanding course structure
+    - Getting lesson IDs for update/delete operations
+    
+    TrainerCentral API Flow:
+    1. GET /api/v4/{orgId}/courses/{courseId}.json
+       → Extract sessions link
+    2. GET the sessions URL
+       → Returns list of all lessons
+    
+    Usage Example:
+        # First get the course lessons
+        lessons = tc_get_course_lessons(
+            courseId="19208000000009003",
+            orgId="60058756004",
+            access_token="..."
+        )
+        
+        # Then you can:
+        # - Create tests for specific lessons
+        # - Update lesson content
+        # - Delete lessons
+        # - Get lesson details
+    
+    Args:
+        courseId (str): Course ID to get lessons from
+        orgId (str): Organization ID (from tc_get_org_id)
+        access_token (str): OAuth access token
+    
+    Returns:
+        dict: {
+            "course": {
+                "courseId": "19208000000009003",
+                "courseName": "Python Mastery"
+            },
+            "lessons": [
+                {
+                    "sessionId": "19208000000017003",
+                    "name": "Error Handling Basics",
+                    "description": "Learn error handling...",
+                    "deliveryMode": 4,
+                    "sectionId": "19208000000015001",
+                    "links": {
+                        "tests": "/api/v4/.../tests.json",
+                        ...
+                    }
+                },
+                ...
+            ],
+            "total_lessons": 5
+        }
+    
+    Note: 
+        - Provide orgId from tc_get_org_id() tool
+        - OAuth scope required: TrainerCentral.sessionapi.READ
+    """
+    return tc_lessons.get_course_lessons(courseId, orgId, access_token)
+
+
 #@mcp.tool()
 def tc_update_lesson(session_id: str, updates: dict, orgId: str, access_token: str) -> dict:
     """
