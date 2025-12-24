@@ -380,7 +380,7 @@ def tc_view_course_access_requests(courseId: str, orgId: str, access_token: str,
     """
     return tc.view_course_access_requests(courseId, orgId, access_token, limit)
 
-def tc_accept_or_reject_course_view_access_request(courseId: str, orgId: str, access_token:str, responseStatus: int) -> dict:
+def tc_accept_or_reject_course_view_access_request(courseMembersId: str, orgId: str, access_token:str, responseStatus: int) -> dict:
     """
     Accept or Reject a user's course view access request.
 
@@ -393,7 +393,7 @@ def tc_accept_or_reject_course_view_access_request(courseId: str, orgId: str, ac
     Note: Provide orgId and access token of the user, after OAuth, as parameters.  
 
     This will call the TrainerCentral View Course Access Request API:
-        POST /api/v4/{orgId}/updateCourseAttendee/{courseId}.json
+        POST /api/v4/{orgId}/updateCourseAttendee/{courseMembersId}.json
 
     Required OAuth scope:
         TrainerCentral.courseapi.UPDATE
@@ -402,4 +402,4 @@ def tc_accept_or_reject_course_view_access_request(courseId: str, orgId: str, ac
         dict: Updated course object.
    
     """
-    return tc.accept_or_reject_course_view_access_request(courseId, orgId, access_token, responseStatus)
+    return tc.accept_or_reject_course_view_access_request(courseMembersId, orgId, access_token, responseStatus)

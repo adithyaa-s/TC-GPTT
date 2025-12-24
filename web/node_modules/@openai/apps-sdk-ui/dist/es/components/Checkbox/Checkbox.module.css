@@ -1,0 +1,182 @@
+@layer components {.Container {
+  position: relative;
+  display: flex;
+}
+
+  .Container[data-has-label] {
+    align-items: flex-start;
+  }
+
+  .Container[data-orientation="right"] {
+    flex-direction: row-reverse;
+  }
+
+  /* Radix pushes the inputs off screen in a weird way that
+    messes with error overlays */
+  .Container > input {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1px !important;
+    transform: none !important;
+  }.Checkbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  max-width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  background-color: transparent;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}.Checkbox, :where([data-theme="light"]) .Checkbox {
+border: 1px solid var(--gray-200);
+}:where([data-theme="dark"]) .Checkbox {
+border: 1px solid var(--gray-500);
+}
+
+  [data-has-label] .Checkbox {
+    /* Adjust downward for label line-height - not using center to account for long labels than can wrap. */
+    top: 1px;
+  }
+    @media (hover: hover) and (pointer: fine) {.Checkbox:where(:not([data-disabled], [data-state="checked"])):hover, :where([data-theme="light"]) .Checkbox:where(:not([data-disabled], [data-state="checked"])):hover {
+border-color: var(--gray-300);
+}:where([data-theme="dark"]) .Checkbox:where(:not([data-disabled], [data-state="checked"])):hover {
+border-color: var(--gray-600);
+}
+}
+
+  .Checkbox[data-state="indeterminate"],
+  .Checkbox[data-state="checked"] {
+    border-color: var(--gray-900);
+    background-color: var(--gray-900);
+  }
+
+  .Checkbox:focus {
+    outline: none;
+  }
+
+  .Checkbox:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  .Checkbox[data-disabled] {
+    cursor: not-allowed;
+  }
+
+  .Checkbox[data-disabled], :where([data-theme="light"]) .Checkbox[data-disabled] {
+border-color: var(--gray-150);
+background: var(--gray-25);
+}
+
+  :where([data-theme="dark"]) .Checkbox[data-disabled] {
+border-color: var(--gray-300);
+background: var(--gray-200);
+}
+
+    .Checkbox[data-disabled][data-state="checked"], :where([data-theme="light"]) .Checkbox[data-disabled][data-state="checked"] {
+border-color: var(--gray-300);
+background-color: var(--gray-300);
+}
+
+    :where([data-theme="dark"]) .Checkbox[data-disabled][data-state="checked"] {
+border-color: var(--gray-200);
+background-color: var(--gray-200);
+}.CheckMark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 64%;
+  height: 32%;
+  transform: rotate(-45deg) translate(-10%, 100%);
+  transform-origin: center;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+  @starting-style {.CheckMark {
+    opacity: 0
+}
+  }
+
+  [data-state="indeterminate"] .CheckMark {
+    transform: translate(30%, 80%);
+  }
+
+    [data-state="indeterminate"] .CheckMark::before {
+      opacity: 0;
+    }
+
+  /* CheckMark arms */
+  .CheckMark::before,
+  .CheckMark::after {
+    position: absolute;
+    display: block;
+    background: var(--gray-0);
+    content: "";
+    will-change: transform;
+  }
+
+    @starting-style {
+  .CheckMark::before,
+  .CheckMark::after {
+      transform: scale(0)
+  }
+    }
+    /* pure black checkbox is not low enough contrast to look disabled */
+      :where([data-theme="dark"]) .CheckMark[data-disabled]::before,
+      :where([data-theme="dark"]) .CheckMark[data-disabled]::after {
+        background: var(--gray-100);
+      }
+
+  .CheckMark::before {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    transform-origin: 0 0;
+    transition:
+      transform 100ms ease 80ms,
+      opacity 200ms ease;
+  }
+
+  .CheckMark [data-state="indeterminate"]::before {
+    opacity: 0;
+  }
+
+  .CheckMark::after {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    transform-origin: 0 100%;
+    transition: transform 100ms ease 160ms;
+  }.Label {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+  [data-disabled] .Label {
+    cursor: not-allowed;
+  }
+
+  [data-orientation="left"] .Label {
+    padding-left: 8px;
+  }
+
+  [data-orientation="right"] .Label {
+    padding-right: 8px;
+  }
+}

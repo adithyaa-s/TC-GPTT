@@ -1060,15 +1060,15 @@ async def mcp_entrypoint(request: Request, authorization: str = Header(None)):
                 },
                 {
                     "name": "tc_accept_or_reject_course_view_access_request",
-                    "description": "Accept or Reject a user's course view access request. responseStatus - 2 : Accept, 3 : Reject. Requires orgId.",
+                    "description": "Accept or Reject a user's course view access request. responseStatus - 2 : Accept, 3 : Reject. Requires orgId and courseMembersId(found for each user when getting the list of user's requested).",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
                             "orgId": {"type": "string"},
-                            "courseId": {"type": "string"},
+                            "courseMembersId": {"type": "string"},
                             "responseStatus":{"type":"integer"}
                         },
-                        "required": ["orgId", "courseId", "responseStatus"]
+                        "required": ["orgId", "courseMembersId", "responseStatus"]
                     }
                 },
                 {

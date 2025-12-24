@@ -136,11 +136,11 @@ class TrainerCentralCourses:
         
         return response.json()
 
-    def accept_or_reject_course_view_access_request(self, courseId: str, orgId: str, access_token: str, responseStatus: int):
+    def accept_or_reject_course_view_access_request(self, courseMembersId: str, orgId: str, access_token: str, responseStatus: int):
         """
         Accept or Reject a user's course view access request.
         """
-        request_url = f"{self.base_url}/{orgId}/updateCourseAttendee/{courseId}.json"
+        request_url = f"{self.base_url}/{orgId}/updateCourseAttendee/{courseMembersId}.json"
         headers = {"Authorization": f"Bearer {access_token}"}
         data = {"courseMembers": [{"status": responseStatus}]}
 
